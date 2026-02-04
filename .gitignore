@@ -1,0 +1,15 @@
+# Logs
+*.log
+/tmp/dns_restore_*.log
+
+# Backup directories
+/root/dns_backups/
+
+# System files (don't commit actual system configs)
+/etc/resolv.conf.backup
+/etc/unbound/unbound.conf.backup
+
+# Temporary files
+*.tmp
+.DS_Store
+*~
