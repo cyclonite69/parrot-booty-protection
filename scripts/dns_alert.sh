@@ -23,8 +23,8 @@ if ! lsattr /etc/resolv.conf 2>/dev/null | grep -q -- '----i---------'; then
     exit 1
 fi
 
-# Check if localhost resolver is first
-if ! head -1 /etc/resolv.conf | grep -q "127.0.0.1"; then
+# Check if localhost resolver is first nameserver
+if ! grep "^nameserver" /etc/resolv.conf | head -1 | grep -q "127.0.0.1"; then
     alert "Resolv.conf modified - localhost resolver not primary"
     exit 1
 fi
