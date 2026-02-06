@@ -91,21 +91,27 @@ Three monitoring options available:
 ```
 Shows current hardening status with visual indicators.
 
-### Periodic Monitor (Logs changes)
+### Install Automated Monitoring (Optional)
 ```bash
-sudo cp scripts/dns_monitor.sh /usr/local/bin/
-echo "*/5 * * * * /usr/local/bin/dns_monitor.sh" | sudo crontab -
+sudo ./scripts/dns_monitoring_install.sh
 ```
-Runs every 5 minutes, logs to `/var/log/dns_hardening_monitor.log` only when status changes.
+Interactive installer with interval options:
+- Every 5 minutes
+- Every 15 minutes
+- Every 30 minutes (recommended)
+- Every hour
 
-### Alert on Compromise
+Installs:
+- `dns_monitor.sh` - Logs state changes to `/var/log/dns_hardening_monitor.log`
+- `dns_alert.sh` - Logs compromises to `/var/log/dns_hardening_alerts.log`
+
+### Uninstall Monitoring
 ```bash
-sudo cp scripts/dns_alert.sh /usr/local/bin/
-echo "* * * * * /usr/local/bin/dns_alert.sh" | sudo crontab -
+sudo ./scripts/dns_monitoring_uninstall.sh
 ```
-Runs every minute, alerts to `/var/log/dns_hardening_alerts.log` if compromised.
+Removes cron jobs, scripts, and optionally log files.
 
-**See `MONITORING.md` for complete setup instructions.**
+**See `MONITORING.md` for manual setup instructions.**
 
 ---
 
