@@ -12,7 +12,7 @@ alert() {
     
     # Optional: Send desktop notification if available
     if command -v notify-send >/dev/null 2>&1; then
-        notify-send -u critical "DNS Hardening Alert" "$1"
+        notify-send -u critical -t 30000 "DNS Hardening Alert" "$1"
     fi
 }
 

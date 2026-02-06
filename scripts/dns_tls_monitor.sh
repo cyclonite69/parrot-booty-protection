@@ -10,7 +10,7 @@ alert() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ALERT: $1" >&2
     
     if command -v notify-send >/dev/null 2>&1; then
-        notify-send -u critical "DNS Alert" "$1"
+        notify-send -u critical -t 30000 "DNS Alert" "$1"
     fi
 }
 
