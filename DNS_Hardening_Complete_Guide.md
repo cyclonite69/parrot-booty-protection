@@ -34,82 +34,187 @@ sudo systemctl enable unbound
 
 ---
 
-## 2. DNS HARDENING SCRIPT
+## 2. EMERGENCY RESTORATION SCRIPT
 
-**Protects resolv.conf from modification by Portmaster, NetworkManager, and other services.**
+**Save as `/usr/local/bin/dns_restore.sh`:**
 
-The hardening script is located at `scripts/dns_harden.sh` and provides:
-- Removes NetworkManager's dynamic symlink control
-- Creates static resolv.conf with hardened DNS servers
-- Sets immutable flag (`chattr +i`) to prevent ANY modification
-- Configures NetworkManager to not manage DNS
-- Tests DNS resolution after hardening
-
-**Usage:**
 ```bash
-sudo ./scripts/dns_harden.sh
+#!/bin/bash
+
+# DNS Emergency Restoration Script for Parrot OS
+# Purpose: Restore basic DNS when hardened configs fail
+# Usage: sudo ./dns_restore.sh
+
+set -euo pipefail
+
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Logging setup
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+LOGFILE="/tmp/dns_restore_${TIMESTAMP}.log"
+BACKUP_DIR="/root/dns_backups/backup_${TIMESTAMP}"
+
+# Logging functions
+log() {
+    echo -e "${GREEN}[$(date '+%H:%M:%S')] $1${NC}" | tee -a "$LOGFILE"
+}
+
+error() {
+    echo -e "${RED}[$(date '+%H:%M:%S')] ERROR: $1${NC}" | tee -a "$LOGFILE"
+}
+
+warn() {
+    echo -e "${YELLOW}[$(date '+%H:%M:%S')] WARNING: $1${NC}" | tee -a "$LOGFILE"
+}
+
+# Root check
+require_root() {
+    if [[ $EUID -ne 0 ]]; then
+        error "This script must be run as root"
+        exit 1
+    fi
+}
+
+# DNS test function
+test_dns() {
+    local hostname=${1:-google.com}
+    timeout 2 nslookup "$hostname" >/dev/null 2>&1
+}
+
+# Main restoration function
+restore_dns() {
+    log "Starting DNS emergency restoration"
+    
+    # Step 1: Stop services
+    log "Step 1: Stopping DNS services"
+    systemctl stop unbound 2>/dev/null || true
+    systemctl stop systemd-resolved 2>/dev/null || true
+    
+    # Step 2: Backup current configs
+    log "Step 2: Backing up current configurations"
+    mkdir -p "$BACKUP_DIR"
+    cp /etc/resolv.conf "$BACKUP_DIR/" 2>/dev/null || true
+    cp /etc/unbound/unbound.conf "$BACKUP_DIR/" 2>/dev/null || true
+    cp /etc/systemd/resolved.conf "$BACKUP_DIR/" 2>/dev/null || true
+    log "Backup saved to: $BACKUP_DIR"
+    
+    # Step 3: Restore basic resolv.conf
+    log "Step 3: Restoring basic /etc/resolv.conf"
+    cat > /etc/resolv.conf << 'EOF'
+# Emergency DNS restoration - basic public resolvers
+nameserver 1.1.1.1
+nameserver 1.0.0.1
+nameserver 9.9.9.9
+nameserver 149.112.112.112
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+EOF
+    
+    # Step 4: Test DNS immediately
+    log "Step 4: Testing DNS resolution"
+    if test_dns google.com; then
+        log "DNS test PASSED"
+    else
+        error "DNS test FAILED - check network connectivity"
+        return 1
+    fi
+    
+    # Step 5: Disable problematic services
+    log "Step 5: Masking problematic services"
+    systemctl mask unbound 2>/dev/null || true
+    systemctl mask systemd-resolved 2>/dev/null || true
+    
+    # Step 6: Reset systemd-resolved config
+    log "Step 6: Resetting systemd-resolved configuration"
+    cat > /etc/systemd/resolved.conf << 'EOF'
+[Resolve]
+#DNS=
+#FallbackDNS=
+#Domains=
+#LLMNR=yes
+#MulticastDNS=yes
+#DNSSEC=no
+#DNSOverTLS=no
+#Cache=yes
+#DNSStubListener=yes
+EOF
+    
+    # Step 7: Run sequential DNS tests
+    log "Step 7: Running comprehensive DNS tests"
+    local test_domains=("google.com" "example.com" "cloudflare.com")
+    local failed_tests=0
+    
+    for domain in "${test_domains[@]}"; do
+        if test_dns "$domain"; then
+            log "DNS test for $domain: PASSED"
+        else
+            error "DNS test for $domain: FAILED"
+            ((failed_tests++))
+        fi
+    done
+    
+    if [[ $failed_tests -eq 0 ]]; then
+        log "All DNS tests PASSED"
+    else
+        warn "$failed_tests DNS tests failed"
+    fi
+    
+    # Step 8: Display system status
+    log "Step 8: System status report"
+    echo -e "\n${GREEN}=== DNS RESTORATION COMPLETE ===${NC}"
+    echo -e "${GREEN}Active nameservers:${NC}"
+    grep nameserver /etc/resolv.conf
+    
+    echo -e "\n${GREEN}DNS resolution test:${NC}"
+    if nslookup google.com; then
+        log "Final DNS test: SUCCESS"
+    else
+        error "Final DNS test: FAILED"
+    fi
+    
+    echo -e "\n${GREEN}Service status:${NC}"
+    systemctl is-active unbound || echo "unbound: inactive (expected)"
+    systemctl is-active systemd-resolved || echo "systemd-resolved: inactive (expected)"
+    
+    # Step 9: Provide re-hardening instructions
+    echo -e "\n${YELLOW}=== NEXT STEPS FOR RE-HARDENING ===${NC}"
+    echo "1. Unmask services: sudo systemctl unmask unbound"
+    echo "2. Review unbound.conf with proper fallback configuration"
+    echo "3. Test incrementally: dig @127.0.0.1 google.com"
+    echo "4. Re-enable services one by one"
+    echo "5. Keep this script available for future emergencies"
+    
+    log "Restoration completed. Logfile: $LOGFILE"
+}
+
+# Main execution
+main() {
+    require_root
+    log "DNS Emergency Restoration Script Started"
+    log "Logfile: $LOGFILE"
+    
+    restore_dns
+    
+    echo -e "\n${GREEN}Emergency restoration completed successfully!${NC}"
+    echo -e "Logfile saved to: ${GREEN}$LOGFILE${NC}"
+    echo -e "Backup saved to: ${GREEN}$BACKUP_DIR${NC}"
+}
+
+main "$@"
 ```
 
-**To unharden (if needed):**
+**Install the script:**
 ```bash
-sudo chattr -i /etc/resolv.conf
+sudo chmod +x /usr/local/bin/dns_restore.sh
 ```
 
 ---
 
-## 3. EMERGENCY RESTORATION SCRIPT
-
-**Automatically handles immutable flags and restores DNS functionality.**
-
-The restoration script is located at `scripts/dns_restore.sh` and provides:
-- Removes immutable flags from resolv.conf
-- Stops conflicting DNS services
-- Creates backup of current configuration
-- Restores basic public DNS resolvers
-- Tests DNS resolution
-- Provides re-hardening instructions
-
-**Usage:**
-```bash
-sudo ./scripts/dns_restore.sh
-```
-
-**The script automatically:**
-- Removes `chattr +i` immutable flag
-- Backs up configs to `/root/dns_backups/backup_TIMESTAMP/`
-- Creates logs at `/tmp/dns_restore_TIMESTAMP.log`
-
----
-
-## 4. MONITORING SCRIPTS
-
-Three monitoring options available:
-
-### Status Check (Manual)
-```bash
-./scripts/dns_status.sh
-```
-Shows current hardening status with visual indicators.
-
-### Periodic Monitor (Logs changes)
-```bash
-sudo cp scripts/dns_monitor.sh /usr/local/bin/
-echo "*/5 * * * * /usr/local/bin/dns_monitor.sh" | sudo crontab -
-```
-Runs every 5 minutes, logs to `/var/log/dns_hardening_monitor.log` only when status changes.
-
-### Alert on Compromise
-```bash
-sudo cp scripts/dns_alert.sh /usr/local/bin/
-echo "* * * * * /usr/local/bin/dns_alert.sh" | sudo crontab -
-```
-Runs every minute, alerts to `/var/log/dns_hardening_alerts.log` if compromised.
-
-**See `MONITORING.md` for complete setup instructions.**
-
----
-
-## 5. HARDENED UNBOUND CONFIGURATION
+## 3. HARDENED UNBOUND CONFIGURATION
 
 **File: `/etc/unbound/unbound.conf`**
 
@@ -249,31 +354,35 @@ MulticastDNS=no
 ## 5. IMPLEMENTATION STEPS
 
 ```bash
-# 1. Harden DNS configuration (protects against Portmaster/NetworkManager changes)
-sudo ./scripts/dns_harden.sh
+# 1. Install restoration script
+sudo cp dns_restore.sh /usr/local/bin/
+sudo chmod +x /usr/local/bin/dns_restore.sh
 
-# 2. Setup monitoring (optional but recommended)
-./scripts/dns_status.sh  # Check status anytime
-# See MONITORING.md for automated monitoring setup
-
-# 3. Unmask Unbound (if previously masked)
+# 2. Unmask Unbound (if previously masked)
 sudo systemctl unmask unbound
 
-# 3. Apply hardened Unbound configuration
-sudo cp configs/unbound.conf /etc/unbound/unbound.conf
+# 3. Apply hardened configuration
+sudo cp unbound.conf /etc/unbound/unbound.conf
 sudo chown root:root /etc/unbound/unbound.conf
 sudo chmod 644 /etc/unbound/unbound.conf
 
 # 4. Validate configuration
 sudo unbound-checkconf
 
-# 5. Start and enable Unbound
+# 5. Configure resolv.conf
+sudo tee /etc/resolv.conf > /dev/null << 'EOF'
+nameserver 127.0.0.1
+nameserver 1.1.1.1
+nameserver 1.0.0.1
+options timeout:2
+options attempts:3
+EOF
+
+# 6. Start and enable Unbound
 sudo systemctl start unbound
 sudo systemctl enable unbound
 sudo systemctl status unbound
 ```
-
-**Note:** The hardening script (`dns_harden.sh`) sets the immutable flag on `/etc/resolv.conf` to prevent Portmaster, NetworkManager, or any other service from modifying it. To make changes later, first remove the immutable flag with `sudo chattr -i /etc/resolv.conf`.
 
 ---
 
@@ -317,18 +426,6 @@ sudo ss -tupn | grep 853
 
 ## 7. TROUBLESHOOTING
 
-### If DNS stops working after Portmaster/NetworkManager changes:
-```bash
-# Check if resolv.conf was modified
-cat /etc/resolv.conf
-
-# Check immutable flag status
-lsattr /etc/resolv.conf
-
-# Re-apply hardening if needed
-sudo ./scripts/dns_harden.sh
-```
-
 ### If `dig @127.0.0.1` fails:
 ```bash
 # Check service status
@@ -357,20 +454,8 @@ nslookup google.com 127.0.0.1
 
 ### Complete DNS failure:
 ```bash
-# Emergency restoration (removes immutable flags and restores DNS)
-sudo ./scripts/dns_restore.sh
-```
-
-### To temporarily disable hardening:
-```bash
-# Remove immutable flag
-sudo chattr -i /etc/resolv.conf
-
-# Make your changes
-sudo nano /etc/resolv.conf
-
-# Re-apply hardening when done
-sudo ./scripts/dns_harden.sh
+# Emergency restoration (restores DNS in under 30 seconds)
+sudo /usr/local/bin/dns_restore.sh
 ```
 
 ---
@@ -422,23 +507,17 @@ This configuration protects against:
 
 ### Quick Commands:
 ```bash
-# Emergency DNS restoration (handles immutable flags)
-sudo ./scripts/dns_restore.sh
-
-# Re-apply hardening after restoration
-sudo ./scripts/dns_harden.sh
-
-# Check immutable flag status
-lsattr /etc/resolv.conf
-
-# Remove immutable flag temporarily
-sudo chattr -i /etc/resolv.conf
+# Emergency DNS restoration
+sudo /usr/local/bin/dns_restore.sh
 
 # Restart Unbound
 sudo systemctl restart unbound
 
 # Check if Unbound is responding
 dig @127.0.0.1 google.com
+
+# Emergency DNS in resolv.conf
+echo "nameserver 1.1.1.1" | sudo tee /etc/resolv.conf
 
 # Check what's using port 53
 sudo netstat -tulpn | grep :53

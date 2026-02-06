@@ -1,12 +1,13 @@
 # DNS Hardening for Parrot OS
 
-Enterprise-grade DNS security configuration with DNS over TLS, DNSSEC validation, and emergency recovery.
+Enterprise-grade DNS security with protection against Portmaster/NetworkManager modifications.
 
 ## 🔒 Security Features
 - DNS over TLS (DoT) encryption
 - DNSSEC validation
 - Query minimization for privacy
-- Rate limiting and access controls
+- **Immutable resolv.conf protection**
+- **NetworkManager DNS override disabled**
 - Emergency restoration capability
 - **Top 1-2% global security posture**
 
@@ -15,49 +16,53 @@ Enterprise-grade DNS security configuration with DNS over TLS, DNSSEC validation
 # 1. Install Unbound
 sudo apt update && sudo apt install -y unbound unbound-anchor
 
-# 2. Install emergency restore script
-sudo cp scripts/dns_restore.sh /usr/local/bin/
-sudo chmod +x /usr/local/bin/dns_restore.sh
+# 2. Harden DNS configuration (protects against Portmaster/NetworkManager)
+sudo ./scripts/dns_harden.sh
 
-# 3. Apply hardened configuration
+# 3. Apply hardened Unbound configuration
 sudo cp configs/unbound.conf /etc/unbound/
 sudo systemctl restart unbound
-
-# 4. Configure system DNS
-echo "nameserver 127.0.0.1" | sudo tee /etc/resolv.conf
 ```
 
 ## 📁 Repository Structure
 ```
-├── README.md              # Complete implementation guide
+├── README.md                        # Complete implementation guide
+├── DNS_Hardening_Complete_Guide.md  # Detailed security analysis
 ├── scripts/
-│   └── dns_restore.sh     # Emergency DNS restoration script
+│   ├── dns_harden.sh               # Hardens resolv.conf (immutable flag)
+│   └── dns_restore.sh              # Emergency DNS restoration
 ├── configs/
-│   └── unbound.conf       # Hardened Unbound configuration
+│   └── unbound.conf                # Hardened Unbound configuration
 └── LICENSE
 ```
 
-## 🛡️ Attack Protection
+## 🛡️ Protection Against
+- Portmaster DNS modifications
+- NetworkManager dynamic DNS changes
 - DNS Poisoning/Spoofing
 - Man-in-the-Middle attacks
 - DNS Hijacking
 - DNS Rebinding attacks
-- Cache Poisoning
-- Privacy/Surveillance attacks
+- ISP surveillance
 
 ## 🆘 Emergency Recovery
 If DNS breaks completely:
 ```bash
-sudo /usr/local/bin/dns_restore.sh
+sudo ./scripts/dns_restore.sh
 ```
 
-## 📊 Security Comparison
-- **General Population**: Top 1-2%
-- **Corporate Networks**: Top 10-15%
-- **Security-Conscious Users**: Top 5%
+## 🔧 Unharden Temporarily
+```bash
+sudo chattr -i /etc/resolv.conf  # Remove immutable flag
+# Make changes
+sudo ./scripts/dns_harden.sh     # Re-apply hardening
+```
 
 ## ⚡ Verification
 ```bash
+# Check immutable flag is set
+lsattr /etc/resolv.conf
+
 # Test DNS over TLS is working
 sudo ss -tupn | grep 853
 
@@ -69,4 +74,4 @@ dig @127.0.0.1 +dnssec google.com
 See [README.md](README.md) for complete implementation guide with all configurations, troubleshooting, and security analysis.
 
 ---
-**Tested on Parrot OS | Enterprise-Grade Security | Emergency Recovery Included**
+**Tested on Parrot OS | Portmaster-Resistant | Emergency Recovery Included**

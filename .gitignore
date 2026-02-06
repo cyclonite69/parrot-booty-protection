@@ -1,6 +1,11 @@
 # Logs
 *.log
 /tmp/dns_restore_*.log
+/tmp/dns_harden_*.log
+/var/log/dns_hardening_*.log
+
+# State files
+/var/run/dns_hardening.state
 
 # Backup directories
 /root/dns_backups/

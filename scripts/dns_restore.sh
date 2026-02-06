@@ -61,8 +61,12 @@ restore_dns() {
     cp /etc/systemd/resolved.conf "$BACKUP_DIR/" 2>/dev/null || true
     log "Backup saved to: $BACKUP_DIR"
     
-    # Step 3: Restore basic resolv.conf
-    log "Step 3: Restoring basic /etc/resolv.conf"
+    # Step 3: Remove immutable flag and restore basic resolv.conf
+    log "Step 3: Removing immutable flag from /etc/resolv.conf"
+    chattr -i /etc/resolv.conf 2>/dev/null || true
+    rm -f /etc/resolv.conf 2>/dev/null || true
+    
+    log "Step 3b: Restoring basic /etc/resolv.conf"
     cat > /etc/resolv.conf << 'EOF'
 # Emergency DNS restoration - basic public resolvers
 nameserver 1.1.1.1
