@@ -162,6 +162,20 @@ main() {
     
     restore_dns
     
+    # Ask about monitoring
+    echo ""
+    if crontab -l 2>/dev/null | grep -q "dns_monitor.sh\|dns_alert.sh"; then
+        echo -e "${YELLOW}Monitoring is currently installed${NC}"
+        read -p "Disable monitoring? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log "Disabling monitoring"
+            crontab -l | grep -v "dns_monitor.sh" | grep -v "dns_alert.sh" | crontab -
+            rm -f /usr/local/bin/dns_monitor.sh /usr/local/bin/dns_alert.sh
+            log "Monitoring disabled"
+        fi
+    fi
+    
     echo -e "\n${GREEN}Emergency restoration completed successfully!${NC}"
     echo -e "Logfile saved to: ${GREEN}$LOGFILE${NC}"
     echo -e "Backup saved to: ${GREEN}$BACKUP_DIR${NC}"
