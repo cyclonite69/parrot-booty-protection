@@ -1,497 +1,96 @@
-# Complete DNS Hardening Guide for Parrot OS
+# DNS Hardening for Parrot OS
 
-## Overview
-This guide implements a hardened DNS infrastructure with DNS over TLS, DNSSEC validation, privacy protection, and emergency recovery mechanisms. The setup places you in the top 1-2% globally for DNS security.
+**A suite of scripts to harden your DNS, firewall, and system services with a zero-trust philosophy.**
 
-## Security Features Implemented
-- ✅ DNS over TLS (DoT) encryption to upstream resolvers
-- ✅ DNSSEC validation for authenticity
-- ✅ Query minimization for privacy
-- ✅ No query logging
-- ✅ Rate limiting and access controls
-- ✅ Multiple encrypted upstream providers
-- ✅ Emergency recovery script
-- ✅ Protection against DNS poisoning, MITM, rebinding attacks
+![OS: Parrot OS / Debian](https://img.shields.io/badge/OS-Parrot%20OS%20%7C%20Debian-blue.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![Last Commit](https://img.shields.io/github/last-commit/cyclonite69/dns-hardening-parrot)
 
----
+This repository provides a collection of powerful, interactive scripts designed to significantly improve the security and privacy of a Parrot OS or other Debian-based desktop. It automates the process of setting up DNS-over-TLS with Unbound, configuring a strict zero-trust firewall with `nftables`, and reducing the system's attack surface by disabling unnecessary services.
 
-## 1. INSTALLATION
+## ✅ Features
 
-```bash
-# Update package list
-sudo apt update
+-   **DNS Hardening**: Configures `unbound` as a local DNS-over-TLS (DoT) resolver to encrypt your DNS queries.
+-   **Zero-Trust Firewall**: An interactive wizard to build a strict `nftables` firewall policy, allowing only the traffic you explicitly permit.
+-   **Service Hardening**: Interactively scan for and disable unnecessary system services to minimize attack surface.
+-   **Docker DNS Fix**: Automatically solves the common DNS resolution issue for containers when using a local DNS resolver.
+-   **Robust & Reversible**: All scripts are designed to be idempotent and include mechanisms to revert changes.
 
-# Install Unbound DNS resolver
-sudo apt install -y unbound unbound-anchor
+## 🚀 Quick Start
 
-# Stop and disable systemd-resolved to prevent conflicts
-sudo systemctl stop systemd-resolved
-sudo systemctl mask systemd-resolved
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/cyclonite69/dns-hardening-parrot.git
+    cd dns-hardening-parrot
+    ```
+2.  **Run the hardening wizards:**
+    ```bash
+    # Harden your firewall first (most impactful)
+    sudo ./scripts/port_harden.sh
 
-# Enable Unbound
-sudo systemctl enable unbound
-```
-
----
-
-## 2. DNS HARDENING SCRIPT
-
-**Protects resolv.conf from modification by Portmaster, NetworkManager, and other services.**
-
-The hardening script is located at `scripts/dns_harden.sh` and provides:
-- Removes NetworkManager's dynamic symlink control
-- Creates static resolv.conf with hardened DNS servers
-- Sets immutable flag (`chattr +i`) to prevent ANY modification
-- Configures NetworkManager to not manage DNS
-- Tests DNS resolution after hardening
-
-**Usage:**
-```bash
-sudo ./scripts/dns_harden.sh
-```
-
-**To unharden (if needed):**
-```bash
-sudo chattr -i /etc/resolv.conf
-```
-
----
-
-## 3. EMERGENCY RESTORATION SCRIPT
-
-**Automatically handles immutable flags and restores DNS functionality.**
-
-The restoration script is located at `scripts/dns_restore.sh` and provides:
-- Removes immutable flags from resolv.conf
-- Stops conflicting DNS services
-- Creates backup of current configuration
-- Restores basic public DNS resolvers
-- Tests DNS resolution
-- Provides re-hardening instructions
-
-**Usage:**
-```bash
-sudo ./scripts/dns_restore.sh
-```
-
-**The script automatically:**
-- Removes `chattr +i` immutable flag
-- Backs up configs to `/root/dns_backups/backup_TIMESTAMP/`
-- Creates logs at `/tmp/dns_restore_TIMESTAMP.log`
-
----
-
-## 4. MONITORING SCRIPTS
-
-Three monitoring options available:
-
-### Status Check (Manual)
-```bash
-./scripts/dns_status.sh
-```
-Shows current hardening status with visual indicators.
-
-### Install Automated Monitoring (Optional)
-```bash
-sudo ./scripts/dns_monitoring_install.sh
-```
-Interactive installer with interval options:
-- Every 5 minutes
-- Every 15 minutes
-- Every 30 minutes (recommended)
-- Every hour
-
-Installs:
-- `dns_monitor.sh` - Logs state changes to `/var/log/dns_hardening_monitor.log`
-- `dns_alert.sh` - Logs compromises to `/var/log/dns_hardening_alerts.log`
-
-### Uninstall Monitoring
-```bash
-sudo ./scripts/dns_monitoring_uninstall.sh
-```
-Removes cron jobs, scripts, and optionally log files.
-
-**See `MONITORING.md` for manual setup instructions.**
-
----
-
-## 5. HARDENED UNBOUND CONFIGURATION
-
-**File: `/etc/unbound/unbound.conf`**
-
-```bash
-# Unbound DNS Resolver Configuration - Hardened for Parrot OS with DNS over TLS
-# /etc/unbound/unbound.conf
-
-server:
-    # Network interface and port configuration
-    interface: 127.0.0.1
-    port: 53
-    do-ip4: yes
-    do-ip6: no
-    do-udp: yes
-    do-tcp: yes
+    # Then, harden system services
+    sudo ./scripts/service_harden.sh
     
-    # Access control - localhost only for security
-    access-control: 127.0.0.0/8 allow
-    access-control: 0.0.0.0/0 refuse
-    
-    # Privacy hardening - query minimization
-    qname-minimisation: yes
-    qname-minimisation-strict: yes
-    
-    # Disable logging for privacy
-    verbosity: 1
-    log-queries: no
-    log-replies: no
-    log-servfail: no
-    
-    # DNSSEC validation enabled
-    auto-trust-anchor-file: "/var/lib/unbound/root.key"
-    val-clean-additional: yes
-    val-permissive-mode: no
-    val-log-level: 1
-    
-    # DNS over TLS configuration
-    tls-cert-bundle: /etc/ssl/certs/ca-certificates.crt
-    
-    # Performance and security settings
-    num-threads: 2
-    msg-cache-slabs: 2
-    rrset-cache-slabs: 2
-    infra-cache-slabs: 2
-    key-cache-slabs: 2
-    
-    # Cache settings
-    cache-min-ttl: 300
-    cache-max-ttl: 86400
-    prefetch: yes
-    prefetch-key: yes
-    
-    # Rate limiting to prevent abuse
-    ratelimit: 1000
-    ratelimit-slabs: 4
-    ratelimit-size: 4m
-    
-    # Security hardening
-    hide-identity: yes
-    hide-version: yes
-    harden-glue: yes
-    harden-dnssec-stripped: yes
-    harden-below-nxdomain: yes
-    harden-referral-path: yes
-    harden-algo-downgrade: yes
-    use-caps-for-id: yes
-    
-    # Prevent DNS rebinding attacks
-    private-address: 192.168.0.0/16
-    private-address: 169.254.0.0/16
-    private-address: 172.16.0.0/12
-    private-address: 10.0.0.0/8
-    private-address: fd00::/8
-    private-address: fe80::/10
-    
-    # Memory usage limits
-    rrset-cache-size: 100m
-    msg-cache-size: 50m
-    key-cache-size: 100m
-    neg-cache-size: 10m
-    
-    # Upstream fallback configuration with TLS - CRITICAL for recovery
-    forward-zone:
-        name: "."
-        # Cloudflare DNS over TLS (primary)
-        forward-addr: 1.1.1.1@853#cloudflare-dns.com
-        forward-addr: 1.0.0.1@853#cloudflare-dns.com
-        # Quad9 DNS over TLS (secondary)
-        forward-addr: 9.9.9.9@853#dns.quad9.net
-        forward-addr: 149.112.112.112@853#dns.quad9.net
-        # Forward first, fallback to recursive if needed
-        forward-first: yes
-        forward-tls-upstream: yes
+    # Finally, set up encrypted DNS
+    sudo ./scripts/dns_harden.sh
+    ```
+3.  **Fix Docker DNS (if you use Docker):**
+    ```bash
+    sudo ./scripts/docker_dns_fix.sh --apply
+    ```
 
-# Remote control (disabled for security)
-remote-control:
-    control-enable: no
-```
+## 📜 Script Overview
 
----
+| Script | Purpose | Usage |
+| :--- | :--- | :--- |
+| `port_harden.sh` | Interactively create a zero-trust `nftables` firewall. | `sudo ./scripts/port_harden.sh` |
+| `service_harden.sh` | Interactively disable unnecessary system services. | `sudo ./scripts/service_harden.sh` |
+| `dns_harden.sh` | Hardens system DNS to use a local DoT resolver. | `sudo ./scripts/dns_harden.sh` |
+| `dns_restore.sh` | Reverts all changes made by the DNS hardening script. | `sudo ./scripts/dns_restore.sh` |
+| `docker_dns_fix.sh` | Automatically configures DNS for Docker containers. | `sudo ./scripts/docker_dns_fix.sh --apply`|
 
-## 4. SYSTEM CONFIGURATION
+## 📋 Prerequisites
 
-**Configure `/etc/resolv.conf`:**
-```bash
-sudo tee /etc/resolv.conf > /dev/null << 'EOF'
-nameserver 127.0.0.1
-nameserver 1.1.1.1
-nameserver 1.0.0.1
-options timeout:2
-options attempts:3
-EOF
-```
+-   A Debian-based system (tested on Parrot OS).
+-   `git`, `bash`, and standard networking tools (`ip`, `dig`).
+-   `unbound` and `nftables`.
+-   Root/sudo privileges are required to run these scripts.
 
-**Optional - systemd-resolved configuration (`/etc/systemd/resolved.conf`):**
-```bash
-[Resolve]
-# Use Unbound as primary resolver
-DNS=127.0.0.1
-# Fallback to public DNS if Unbound fails
-FallbackDNS=1.1.1.1 1.0.0.1 9.9.9.9 149.112.112.112
-# Disable systemd-resolved stub listener to avoid conflicts
-DNSStubListener=no
-# Enable DNSSEC (handled by Unbound)
-DNSSEC=yes
-# Disable DNS over TLS (handled by Unbound)
-DNSOverTLS=no
-# Enable caching
-Cache=yes
-# Disable LLMNR and MulticastDNS for security
-LLMNR=no
-MulticastDNS=no
-```
+## ⚙️ Installation
 
----
-
-## 5. IMPLEMENTATION STEPS
+No complex installation is required beyond ensuring the prerequisites are met.
 
 ```bash
-# 1. Harden DNS configuration (protects against Portmaster/NetworkManager changes)
-sudo ./scripts/dns_harden.sh
+# 1. Update your system
+sudo apt update && sudo apt upgrade -y
 
-# 2. Setup monitoring (optional but recommended)
-./scripts/dns_status.sh  # Check status anytime
-# See MONITORING.md for automated monitoring setup
+# 2. Install required packages
+sudo apt install -y unbound nftables dnsutils
 
-# 3. Unmask Unbound (if previously masked)
-sudo systemctl unmask unbound
+# 3. Clone the repository
+git clone https://github.com/cyclonite69/dns-hardening-parrot.git
+cd dns-hardening-parrot
 
-# 3. Apply hardened Unbound configuration
-sudo cp configs/unbound.conf /etc/unbound/unbound.conf
-sudo chown root:root /etc/unbound/unbound.conf
-sudo chmod 644 /etc/unbound/unbound.conf
-
-# 4. Validate configuration
-sudo unbound-checkconf
-
-# 5. Start and enable Unbound
-sudo systemctl start unbound
-sudo systemctl enable unbound
-sudo systemctl status unbound
+# 4. Make scripts executable
+chmod +x scripts/*.sh
 ```
 
-**Note:** The hardening script (`dns_harden.sh`) sets the immutable flag on `/etc/resolv.conf` to prevent Portmaster, NetworkManager, or any other service from modifying it. To make changes later, first remove the immutable flag with `sudo chattr -i /etc/resolv.conf`.
+## ⚠️ Security Warnings
 
----
+-   **Firewall**: The `port_harden.sh` script creates a **deny-by-default** firewall. If you configure it incorrectly (e.g., without allowing SSH) and apply the rules, you could lock yourself out of a remote machine.
+-   **Root Access**: These scripts make significant, system-wide changes. Read the code and understand what each script does before executing it.
+-   **Backups**: While the scripts create backups, you are encouraged to have your own system snapshots or backups as a fallback.
 
-## 6. VERIFICATION TESTS
+## 📚 Detailed Documentation
 
-Run these tests to verify everything is working:
+For a deeper dive into the architecture, script logic, and advanced configuration, please see our detailed documentation.
 
-```bash
-# Test 1: Direct Unbound query
-dig @127.0.0.1 google.com
+➡️ **[Read the Full Documentation (GEMINI.md)](GEMINI.md)**
 
-# Test 2: System DNS resolution
-nslookup example.com
+## 🤝 Contributing
 
-# Test 3: Host resolution
-getent hosts google.com
+We welcome contributions! Please read our [**Contributing Guidelines (CONTRIBUTING.md)**](CONTRIBUTING.md) to get started with reporting issues, submitting pull requests, and our code style conventions.
 
-# Test 4: Service status
-systemctl status unbound
+## 📜 License
 
-# Test 5: DNSSEC validation (look for 'ad' flag)
-dig @127.0.0.1 +dnssec google.com
-
-# Test 6: Multiple domains
-for domain in google.com example.com cloudflare.com; do
-    echo "Testing $domain:"
-    dig @127.0.0.1 +short $domain
-done
-
-# Test 7: Verify DNS over TLS connections
-sudo ss -tupn | grep 853
-```
-
-**Expected results:**
-- All dig commands should return IP addresses
-- Service status should show "active (running)"
-- DNSSEC queries should show the `ad` (authenticated data) flag
-- Port 853 connections should show established TLS connections to 1.1.1.1, 1.0.0.1, 9.9.9.9, and 149.112.112.112
-
----
-
-## 7. TROUBLESHOOTING
-
-### If DNS stops working after Portmaster/NetworkManager changes:
-```bash
-# Check if resolv.conf was modified
-cat /etc/resolv.conf
-
-# Check immutable flag status
-lsattr /etc/resolv.conf
-
-# Re-apply hardening if needed
-sudo ./scripts/dns_harden.sh
-```
-
-### If `dig @127.0.0.1` fails:
-```bash
-# Check service status
-sudo systemctl status unbound
-
-# Check configuration
-sudo unbound-checkconf
-
-# Check logs
-sudo journalctl -u unbound -f
-
-# If still broken, use emergency restore
-sudo /usr/local/bin/dns_restore.sh
-```
-
-### If system DNS fails but Unbound works:
-```bash
-# Check resolv.conf
-cat /etc/resolv.conf
-
-# Should contain: nameserver 127.0.0.1
-
-# Test direct to Unbound
-nslookup google.com 127.0.0.1
-```
-
-### Complete DNS failure:
-```bash
-# Emergency restoration (removes immutable flags and restores DNS)
-sudo ./scripts/dns_restore.sh
-```
-
-### To temporarily disable hardening:
-```bash
-# Remove immutable flag
-sudo chattr -i /etc/resolv.conf
-
-# Make your changes
-sudo nano /etc/resolv.conf
-
-# Re-apply hardening when done
-sudo ./scripts/dns_harden.sh
-```
-
----
-
-## 8. SECURITY BENEFITS
-
-This configuration protects against:
-
-### DNS-Based Attacks:
-- ✅ **DNS Poisoning/Spoofing** - DNSSEC validation prevents fake records
-- ✅ **Man-in-the-Middle** - DNS over TLS encrypts all upstream queries
-- ✅ **DNS Hijacking** - Local resolver prevents ISP/router hijacking
-- ✅ **DNS Rebinding** - Private address filtering blocks internal network access
-- ✅ **Cache Poisoning** - Query randomization and hardened validation
-- ✅ **DNS Amplification** - Rate limiting and access controls
-
-### Privacy Protection:
-- ✅ **ISP Monitoring** - Encrypted queries prevent ISP surveillance
-- ✅ **Query Logging** - No local logging of DNS requests
-- ✅ **Metadata Leakage** - Query minimization reduces information exposure
-- ✅ **DNS Fingerprinting** - Hidden identity and version information
-
-### Network Security:
-- ✅ **BGP Hijacking** - Multiple diverse upstream providers
-- ✅ **Algorithm Downgrade** - Protection against crypto downgrade attacks
-- ✅ **Subdomain Enumeration** - Query minimization makes reconnaissance harder
-
----
-
-## 9. PERFORMANCE COMPARISON
-
-**Your Security Level: Top 1-2% Globally**
-
-### vs General Population:
-- Most use ISP DNS (unencrypted, logged, often censored)
-- You have: Local resolver + DoT + DNSSEC + Privacy hardening
-
-### vs Corporate Networks:
-- Most corporate DNS lacks encryption to external resolvers
-- You have: Full end-to-end encryption + privacy-first configuration
-
-### vs Security-Conscious Users:
-- Advanced users might use Pi-hole or browser DoH
-- You have: System-wide DoT + professional-grade fallback mechanisms
-
----
-
-## 10. EMERGENCY REFERENCE
-
-### Quick Commands:
-```bash
-# Emergency DNS restoration (handles immutable flags)
-sudo ./scripts/dns_restore.sh
-
-# Re-apply hardening after restoration
-sudo ./scripts/dns_harden.sh
-
-# Check immutable flag status
-lsattr /etc/resolv.conf
-
-# Remove immutable flag temporarily
-sudo chattr -i /etc/resolv.conf
-
-# Restart Unbound
-sudo systemctl restart unbound
-
-# Check if Unbound is responding
-dig @127.0.0.1 google.com
-
-# Check what's using port 53
-sudo netstat -tulpn | grep :53
-
-# Verify TLS connections
-sudo ss -tupn | grep 853
-```
-
-### Log Locations:
-- **Unbound logs:** `journalctl -u unbound`
-- **Restore script logs:** `/tmp/dns_restore_*.log`
-- **Backup location:** `/root/dns_backups/backup_*/`
-
-### Service Management:
-```bash
-# After emergency restore, re-enable hardened setup
-sudo systemctl unmask unbound
-sudo systemctl enable unbound
-sudo systemctl start unbound
-```
-
----
-
-## 11. MAINTENANCE
-
-### Regular Checks:
-```bash
-# Monthly: Verify TLS connections are active
-sudo ss -tupn | grep 853
-
-# Monthly: Test DNSSEC validation
-dig @127.0.0.1 +dnssec google.com | grep -i "ad"
-
-# Monthly: Check service status
-systemctl status unbound
-```
-
-### Updates:
-- Unbound updates automatically via system package manager
-- DNSSEC root keys update automatically
-- TLS certificates are managed by the system
-
-### Backup Strategy:
-- Emergency restore script creates automatic backups in `/root/dns_backups/`
-- Keep the restore script accessible for emergencies
-- Test the restore script periodically
-
----
-
-**This configuration provides enterprise-grade DNS security with privacy protection, placing you in the top 1-2% globally for DNS security posture.**
+This project is licensed under the MIT License. See the [**LICENSE**](LICENSE) file for details.
