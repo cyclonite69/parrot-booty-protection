@@ -2,8 +2,6 @@
 # hardenctl - Security Control Dashboard
 # USAGE: sudo ./hardenctl
 
-set -x # Enable debug output for verbose tracing
-
 # Source core components
 source "$(dirname "$0")/core/logger.sh"
 source "$(dirname "$0")/core/state_manager.sh"
