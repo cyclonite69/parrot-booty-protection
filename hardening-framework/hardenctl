@@ -71,22 +71,29 @@ main_menu() {
         done
         
         # Add special options
-        options+=("SEP_DIVIDER" "----------------")
         options+=("RUN_ALL" "Apply All Modules")
         options+=("VERIFY_ALL" "Verify All Modules")
         
-        echo "DEBUG: About to call whiptail..."
-        # Display menu with simplified redirection for debugging.
-        # This will print the menu options to stdout (captured by set -x)
-        # and whiptail's UI might not be visible. This is for debugging purposes only.
-        whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}"
+        # Display menu
+        # This is the original complex redirection that works for whiptail
+        choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
         
         exit_code=$?
-        echo "DEBUG: Whiptail call finished. Exit code: $exit_code"
         
-        # We cannot correctly capture choice here without the complex redirection,
-        # so we will just break the loop after the whiptail call for debugging.
-        break # Exit after one whiptail attempt for debugging.
+        if [ $exit_code -ne 0 ]; then
+            # 1 = Cancel, 255 = ESC
+            break
+        fi
+        
+        if [ -n "$choice" ]; then
+            if [ "$choice" == "RUN_ALL" ]; then
+                run_all_modules
+            elif [ "$choice" == "VERIFY_ALL" ]; then
+                verify_all_modules
+            else # If it's not a special option, it must be a module
+                manage_module "$choice"
+            fi
+        fi
     done
 }
 
