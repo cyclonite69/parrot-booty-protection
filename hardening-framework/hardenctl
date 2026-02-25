@@ -13,6 +13,11 @@ BACKTITLE="Parrot Booty Protection - Modular Security Framework"
 # Check Dependencies
 check_dependencies() {
     local missing=0
+    if [ -z "$TERM" ]; then
+        echo "Error: TERM environment variable is not set."
+        echo "Try running: export TERM=xterm-256color"
+        exit 1
+    fi
     if ! command -v whiptail >/dev/null; then
         echo "Error: 'whiptail' is required but not installed."
         missing=1
@@ -38,13 +43,9 @@ get_module_status_color() {
     local module_name="$1"
     local module_script="$MODULES_DIR/$module_name.sh"
     
-    # Run in subshell to prevent function pollution
     (
         source "$module_script"
-        
-        # Check if enabled in state file
         if is_enabled "$module_name" | grep -q "true"; then
-            # Check actual runtime status
             if verify >/dev/null 2>&1; then
                 echo "ON  (Verified)"
             else
@@ -70,23 +71,20 @@ main_menu() {
         done
         
         # Add special options
-        options+=("----------------" "---")
+        # Use a safe tag (not starting with -) for the divider
+        options+=("SEP_DIVIDER" "----------------")
         options+=("RUN_ALL" "Apply All Modules")
         options+=("VERIFY_ALL" "Verify All Modules")
         
         # Display menu
-        # Redirect stderr to stdout to capture choice, stdout to stderr to show menu
+        # Capture choice from stderr (fd 3)
         choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
         
         exit_code=$?
         
         if [ $exit_code -ne 0 ]; then
-            # If not Cancel (1) or ESC (255), it might be an error
-            if [ $exit_code -ne 1 ] && [ $exit_code -ne 255 ]; then
-                echo "Error: Whiptail failed with exit code $exit_code" >&2
-                echo "Output: $choice" >&2
-            fi
-            break # User cancelled or error
+            # 1 = Cancel, 255 = ESC
+            break
         fi
         
         if [ -n "$choice" ]; then
@@ -94,8 +92,8 @@ main_menu() {
                 run_all_modules
             elif [ "$choice" == "VERIFY_ALL" ]; then
                 verify_all_modules
-            elif [ "$choice" == "----------------" ]; then
-                : # Do nothing
+            elif [ "$choice" == "SEP_DIVIDER" ]; then
+                : # Ignore separator
             else
                 manage_module "$choice"
             fi
@@ -181,7 +179,6 @@ run_all_modules() {
             module_name=$(basename "$module" .sh)
             if [ "$module_name" == "template" ]; then continue; fi
             
-            # Subshell to protect environment
             (
                 source "$module"
                 echo "Installing $module_name..."
@@ -204,7 +201,6 @@ verify_all_modules() {
         module_name=$(basename "$module" .sh)
         if [ "$module_name" == "template" ]; then continue; fi
         
-        # Subshell for verification
         status=$(
             source "$module"
             if verify >/dev/null 2>&1; then echo "PASS"; else echo "FAIL/INACTIVE"; fi
