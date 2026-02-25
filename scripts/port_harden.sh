@@ -116,7 +116,14 @@ main() {
         output_rules+="        tcp dport { 53, 853 } accept\n"
     fi
 
-    step "2. Standard Incoming Traffic"
+    step "2. Secure Time Sync (NTP/NTS)"
+    if ask "Allow outgoing secure time sync (NTP/NTS, ports 123/4460)?"; then
+        output_rules+="        # Allow NTP/NTS time sync\n"
+        output_rules+="        udp dport 123 accept\n"
+        output_rules+="        tcp dport 4460 accept\n"
+    fi
+
+    step "3. Standard Incoming Traffic"
     if ask "Allow incoming SSH (port 22)?"; then
         input_rules+="        # Allow SSH connections\n"
         input_rules+="        tcp dport 22 accept\n"

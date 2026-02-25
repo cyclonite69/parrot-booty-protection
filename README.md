@@ -11,6 +11,7 @@
 ## ✅ Features
 
 -   **Secure the Lines**: Configures `unbound` as a local DNS-over-TLS (DoT) resolver to encrypt your DNS queries.
+-   **Guard the Clock**: Configures `chrony` with Network Time Security (NTS) to ensure encrypted and authenticated time synchronization.
 -   **Man the Cannons**: An interactive wizard to build a strict `nftables` firewall policy, allowing only the traffic you explicitly permit.
 -   **Batten down the Hatches**: Interactively scan for and disable unnecessary system services to minimize attack surface.
 -   **Fix Docker DNS**: Automatically solves the common DNS resolution issue for containers when using a local DNS resolver.
@@ -31,6 +32,9 @@
     # Then, harden system services
     sudo ./scripts/service_harden.sh
     
+    # Secure your system time with NTS
+    sudo ./scripts/ntp_harden.sh
+
     # Finally, set up encrypted DNS
     sudo ./scripts/dns_harden.sh
     ```
@@ -45,6 +49,7 @@
 | :--- | :--- | :--- |
 | `port_harden.sh` | Interactively create a zero-trust `nftables` firewall. | `sudo ./scripts/port_harden.sh` |
 | `service_harden.sh` | Interactively disable unnecessary system services. | `sudo ./scripts/service_harden.sh` |
+| `ntp_harden.sh` | Configures Chrony with NTS for secure time sync. | `sudo ./scripts/ntp_harden.sh` |
 | `dns_harden.sh` | Hardens system DNS to use a local DoT resolver. | `sudo ./scripts/dns_harden.sh` |
 | `dns_restore.sh` | Reverts all changes made by the DNS hardening script. | `sudo ./scripts/dns_restore.sh` |
 | `docker_dns_fix.sh` | Automatically configures DNS for Docker containers. | `sudo ./scripts/docker_dns_fix.sh --apply`|
@@ -79,8 +84,9 @@ chmod +x scripts/*.sh
 
 ## 📚 Detailed Documentation
 
-For a deeper dive into the architecture, script logic, and advanced configuration, please see our detailed documentation.
+For a deeper dive into the architecture, script logic, and advanced configuration, please see our detailed documentation and wiki.
 
+➡️ **[Comprehensive Wiki (WIKI.md)](WIKI.md)**
 ➡️ **[Read the Full Documentation (GEMINI.md)](GEMINI.md)**
 
 ## 🤝 Contributing
