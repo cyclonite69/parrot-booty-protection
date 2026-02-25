@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Port Hardening Wizard - v1.0
-# Purpose: Interactively generate a zero-trust nftables.conf file.
+# Parrot Booty Protection - Port Hardener (The Cannon Master)
+# Purpose: Man the cannons! Interactively generate a zero-trust nftables.conf file.
 # Usage: sudo ./port_harden.sh
 
 set -euo pipefail
@@ -53,7 +53,7 @@ require_root() {
 main() {
     require_root
     
-    echo -e "${CYAN}Welcome to the Port Hardening Wizard${NC}"
+    echo -e "${CYAN}🏴‍☠️ Welcome to Parrot Booty Protection: Port Hardener${NC}"
     echo "This script will help you configure a zero-trust firewall."
 
     # Check for existing refined configuration

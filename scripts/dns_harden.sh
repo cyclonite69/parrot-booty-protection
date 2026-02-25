@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# DNS Hardening Script - v2.0
-# Purpose: Harden DNS by setting a static, immutable resolv.conf and configuring NetworkManager.
+# Parrot Booty Protection - DNS Hardener v2.0
+# Purpose: Guard your DNS treasure by setting an immutable resolv.conf and configuring a local DoT resolver.
 # Usage: sudo ./dns_harden.sh
 
 set -euo pipefail
@@ -61,7 +61,8 @@ test_dns() {
 main() {
     require_root
     
-    echo -e "${CYAN}Starting DNS Hardening Script v2.0${NC}" | tee "$LOGFILE"
+    echo -e "${CYAN}🏴‍☠️ Starting Parrot Booty Protection: DNS Hardener v2.0${NC}" | tee "$LOGFILE"
+    echo -e "${YELLOW}Arrr! Securing your DNS treasure...${NC}"
     log "Logfile will be saved to: $LOGFILE"
     log "Backups will be saved to: $BACKUP_DIR"
     mkdir -p "$BACKUP_DIR"
@@ -139,8 +140,8 @@ EOF
         fi
     fi
 
-    echo -e "\n${GREEN}=== DNS HARDENING COMPLETE ===${NC}"
-    echo "System DNS is now hardened and locked."
+    echo -e "\n${GREEN}=== 🦜 DNS TREASURE SECURED ===${NC}"
+    echo "Your DNS booty is now hardened and locked in the locker."
     echo "Logfile: $LOGFILE"
     echo "Backup: $BACKUP_DIR"
     echo -e "To temporarily undo: ${YELLOW}sudo chattr -i /etc/resolv.conf${NC}"

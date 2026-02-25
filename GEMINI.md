@@ -1,8 +1,8 @@
 # GEMINI.md
 
-## Project Overview
+## Project Overview: Parrot Booty Protection
 
-This project provides a set of scripts and configuration files to harden the DNS configuration on a Linux system, specifically tailored for Parrot OS. The goal is to enhance security and privacy by implementing a robust DNS setup that includes DNS over TLS (DoT), DNSSEC validation, and a strict firewall policy.
+This project provides a set of scripts and configuration files to harden the DNS and network configuration on a Linux system, specifically tailored for Parrot OS. The goal is to enhance security and privacy—protecting your digital treasure (booty)—by implementing a robust setup that includes DNS over TLS (DoT), DNSSEC validation, and a strict firewall policy.
 
 The core components of this project are:
 -   **Unbound:** A local DNS resolver configured to use DNS over TLS to encrypt DNS queries to upstream providers like Cloudflare and Quad9. It also performs DNSSEC validation to protect against DNS spoofing.

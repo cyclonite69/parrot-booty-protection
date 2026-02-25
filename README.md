@@ -1,19 +1,19 @@
-# DNS Hardening for Parrot OS
+# 🏴‍☠️ Parrot Booty Protection
 
-**A suite of scripts to harden your DNS, firewall, and system services with a zero-trust philosophy.**
+**A suite of scripts to guard your digital treasure (DNS, firewall, and system services) with a zero-trust philosophy.**
 
 ![OS: Parrot OS / Debian](https://img.shields.io/badge/OS-Parrot%20OS%20%7C%20Debian-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Last Commit](https://img.shields.io/github/last-commit/cyclonite69/dns-hardening-parrot)
 
-This repository provides a collection of powerful, interactive scripts designed to significantly improve the security and privacy of a Parrot OS or other Debian-based desktop. It automates the process of setting up DNS-over-TLS with Unbound, configuring a strict zero-trust firewall with `nftables`, and reducing the system's attack surface by disabling unnecessary services.
+**Parrot Booty Protection** is a collection of powerful, interactive scripts designed to significantly improve the security and privacy of your Parrot OS. It ensures your "booty"—your data and identity—remains safe from prying eyes by implementing DNS-over-TLS, a zero-trust firewall, and strict service hardening.
 
 ## ✅ Features
 
--   **DNS Hardening**: Configures `unbound` as a local DNS-over-TLS (DoT) resolver to encrypt your DNS queries.
--   **Zero-Trust Firewall**: An interactive wizard to build a strict `nftables` firewall policy, allowing only the traffic you explicitly permit.
--   **Service Hardening**: Interactively scan for and disable unnecessary system services to minimize attack surface.
--   **Docker DNS Fix**: Automatically solves the common DNS resolution issue for containers when using a local DNS resolver.
+-   **Secure the Lines**: Configures `unbound` as a local DNS-over-TLS (DoT) resolver to encrypt your DNS queries.
+-   **Man the Cannons**: An interactive wizard to build a strict `nftables` firewall policy, allowing only the traffic you explicitly permit.
+-   **Batten down the Hatches**: Interactively scan for and disable unnecessary system services to minimize attack surface.
+-   **Fix Docker DNS**: Automatically solves the common DNS resolution issue for containers when using a local DNS resolver.
 -   **Robust & Reversible**: All scripts are designed to be idempotent and include mechanisms to revert changes.
 
 ## 🚀 Quick Start
