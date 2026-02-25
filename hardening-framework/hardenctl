@@ -10,29 +10,22 @@ MODULES_DIR="$(dirname "$0")/modules"
 TITLE="Linux Hardening Control Dashboard"
 BACKTITLE="Parrot Booty Protection - Modular Security Framework"
 
-# Colors for TUI
-export NEWT_COLORS='
-root=,blue
-window=,lightgray
-border=black,lightgray
-shadow=black,gray
-button=black,green
-actbutton=white,green
-compactbutton=black,lightgray
-title=black,lightgray
-roottext=white,blue
-textbox=black,lightgray
-acttextbox=black,cyan
-entry=black,lightgray
-disentry=gray,lightgray
-checkbox=black,lightgray
-actcheckbox=black,cyan
-emptyscale=,gray
-fullscale=,green
-listbox=black,lightgray
-actlistbox=black,cyan
-actsellistbox=black,cyan
-'
+# Check Dependencies
+check_dependencies() {
+    local missing=0
+    if ! command -v whiptail >/dev/null; then
+        echo "Error: 'whiptail' is required but not installed."
+        missing=1
+    fi
+    if ! command -v jq >/dev/null; then
+        echo "Error: 'jq' is required but not installed."
+        missing=1
+    fi
+    if [ $missing -eq 1 ]; then
+        echo "Please install missing dependencies: apt-get install whiptail jq"
+        exit 1
+    fi
+}
 
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
@@ -45,17 +38,22 @@ get_module_status_color() {
     local module_name="$1"
     local module_script="$MODULES_DIR/$module_name.sh"
     
-    # Check if enabled in state file
-    if is_enabled "$module_name" | grep -q "true"; then
-        # Check actual runtime status
-        if source "$module_script" && verify >/dev/null 2>&1; then
-            echo "ON  (Verified)" # Green effectively
+    # Run in subshell to prevent function pollution
+    (
+        source "$module_script"
+        
+        # Check if enabled in state file
+        if is_enabled "$module_name" | grep -q "true"; then
+            # Check actual runtime status
+            if verify >/dev/null 2>&1; then
+                echo "ON  (Verified)"
+            else
+                echo "ERR (Failed)"
+            fi
         else
-            echo "ERR (Failed)"   # Red effectively
+            echo "OFF"
         fi
-    else
-        echo "OFF"              # Grey
-    fi
+    )
 }
 
 main_menu() {
@@ -77,11 +75,18 @@ main_menu() {
         options+=("VERIFY_ALL" "Verify All Modules")
         
         # Display menu
+        # Redirect stderr to stdout to capture choice, stdout to stderr to show menu
         choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
         
         exit_code=$?
+        
         if [ $exit_code -ne 0 ]; then
-            break # User cancelled/Exit
+            # If not Cancel (1) or ESC (255), it might be an error
+            if [ $exit_code -ne 1 ] && [ $exit_code -ne 255 ]; then
+                echo "Error: Whiptail failed with exit code $exit_code" >&2
+                echo "Output: $choice" >&2
+            fi
+            break # User cancelled or error
         fi
         
         if [ -n "$choice" ]; then
@@ -112,7 +117,6 @@ manage_module() {
             current_status="Enabled but Verification Failed"
         fi
         
-        # Action Menu for Enabled Module
         action=$(whiptail --title "$module_name" --menu "Status: $current_status\n\nChoose Action:" 15 60 4 \
             "Disable" "Rollback and Disable Module" \
             "Verify" "Run Verification Tests" \
@@ -145,7 +149,6 @@ manage_module() {
         esac
 
     else
-        # Action Menu for Disabled Module
         action=$(whiptail --title "$module_name" --menu "Status: Disabled\n\nChoose Action:" 15 60 3 \
             "Enable" "Install and Enable Module" \
             "Verify" "Check if active (even if disabled)" \
@@ -178,14 +181,17 @@ run_all_modules() {
             module_name=$(basename "$module" .sh)
             if [ "$module_name" == "template" ]; then continue; fi
             
-            source "$module"
-            echo "Installing $module_name..."
-            if install; then
-                save_state "$module_name" "true"
-                echo "✓ $module_name Installed"
-            else
-                echo "✗ $module_name Failed"
-            fi
+            # Subshell to protect environment
+            (
+                source "$module"
+                echo "Installing $module_name..."
+                if install; then
+                    save_state "$module_name" "true"
+                    echo "✓ $module_name Installed"
+                else
+                    echo "✗ $module_name Failed"
+                fi
+            )
         done | whiptail --progressbox "Running Hardening Suite..." 20 70
         exec 3>&-
         whiptail --msgbox "Batch operation complete. Check logs for details." 8 50
@@ -198,17 +204,18 @@ verify_all_modules() {
         module_name=$(basename "$module" .sh)
         if [ "$module_name" == "template" ]; then continue; fi
         
-        source "$module"
-        if verify >/dev/null 2>&1; then
-            result_text="${result_text}${module_name}: PASS\n"
-        else
-            result_text="${result_text}${module_name}: FAIL/INACTIVE\n"
-        fi
+        # Subshell for verification
+        status=$(
+            source "$module"
+            if verify >/dev/null 2>&1; then echo "PASS"; else echo "FAIL/INACTIVE"; fi
+        )
+        result_text="${result_text}${module_name}: ${status}\n"
     done
     whiptail --title "Verification Report" --msgbox "$result_text" 20 60
 }
 
 # --- Entry Point ---
 check_root
+check_dependencies
 init_state
 main_menu
