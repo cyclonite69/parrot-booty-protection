@@ -29,6 +29,23 @@ require_root() {
         echo -e "${RED}This script must be run as root.${NC}"
         exit 1
     fi
+
+    # Check for and install dependencies
+    if ! command -v unbound &> /dev/null; then
+        warn "'unbound' is not installed. Attempting to install dependencies..."
+        apt-get update -q
+        DEBIAN_FRONTEND=noninteractive apt-get install -y unbound unbound-anchor dnsutils
+        log "✅ Dependencies installed."
+    fi
+
+    # Ensure DNSSEC root key exists
+    if [ ! -f "/var/lib/unbound/root.key" ]; then
+        warn "DNSSEC root key missing. Generating..."
+        # unbound-anchor returns 1 if it updated the key, which is expected here
+        unbound-anchor -a /var/lib/unbound/root.key || true
+        chown unbound:unbound /var/lib/unbound/root.key
+        log "✅ DNSSEC root key generated."
+    fi
 }
 
 test_dns() {
@@ -108,6 +125,19 @@ EOF
     
     systemctl status unbound --no-pager | grep "Active:" | tee -a "$LOGFILE"
     test_dns
+
+    # Optional: Fix Docker DNS
+    if command -v docker &> /dev/null; then
+        step "5. Docker Integration"
+        log "Docker detected. Containers often fail to resolve DNS with local resolvers."
+        read -p "Apply Docker DNS fix (highly recommended)? [Y/n]: " fix_docker
+        fix_docker=${fix_docker:-y}
+        if [[ "$fix_docker" =~ ^[Yy]$ ]]; then
+            ./scripts/docker_dns_fix.sh --apply
+        else
+            warn "Skipping Docker fix. Containers may lose DNS resolution."
+        fi
+    fi
 
     echo -e "\n${GREEN}=== DNS HARDENING COMPLETE ===${NC}"
     echo "System DNS is now hardened and locked."

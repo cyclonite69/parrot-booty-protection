@@ -37,7 +37,7 @@ We welcome pull requests for bug fixes, new features, and documentation improvem
 7.  **Open a Pull Request** from your fork to the `master` branch of this repository.
 8.  In the PR description, clearly explain the problem you are solving and the changes you have made. Link to any relevant issues.
 
-##  coding-style Code Style Guidelines
+## 🎨 Code Style Guidelines
 
 To maintain a consistent and readable codebase, please follow these guidelines:
 
@@ -54,5 +54,13 @@ To maintain a consistent and readable codebase, please follow these guidelines:
 -   **New Features**: Any new feature should be tested on a clean installation of Parrot OS or a similar Debian-based system. Describe the testing you have performed in your PR.
 -   **Bug Fixes**: If you are fixing a bug, please provide steps to reproduce the bug and verify that your fix resolves it.
 -   **Existing Functionality**: Ensure that your changes do not break any existing functionality. Run the other scripts in the repository to confirm they still work as expected.
+
+## 📜 Code of Conduct
+
+Please note that this project is released with a [Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
+
+## 🔒 Security
+
+If you discover a security vulnerability, please see our [Security Policy](SECURITY.md) for instructions on how to report it responsibly.
 
 Thank you again for your contribution!

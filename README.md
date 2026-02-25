@@ -53,25 +53,21 @@ This repository provides a collection of powerful, interactive scripts designed 
 
 -   A Debian-based system (tested on Parrot OS).
 -   `git`, `bash`, and standard networking tools (`ip`, `dig`).
--   `unbound` and `nftables`.
 -   Root/sudo privileges are required to run these scripts.
 
 ## ⚙️ Installation
 
-No complex installation is required beyond ensuring the prerequisites are met.
+The scripts are designed to be self-contained. The hardening script will automatically install required packages like `unbound` and `nftables` if they are missing.
 
 ```bash
-# 1. Update your system
+# 1. Update your system (Recommended)
 sudo apt update && sudo apt upgrade -y
 
-# 2. Install required packages
-sudo apt install -y unbound nftables dnsutils
-
-# 3. Clone the repository
+# 2. Clone the repository
 git clone https://github.com/cyclonite69/dns-hardening-parrot.git
 cd dns-hardening-parrot
 
-# 4. Make scripts executable
+# 3. Make scripts executable
 chmod +x scripts/*.sh
 ```
 

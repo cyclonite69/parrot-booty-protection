@@ -34,11 +34,12 @@ sudo ./scripts/dns_harden.sh
 ```
 
 This will:
-1.  Backup the current `/etc/resolv.conf` and `/etc/NetworkManager/NetworkManager.conf`.
-2.  Create a new `/etc/resolv.conf` with the local Unbound resolver as the primary nameserver.
-3.  Make `/etc/resolv.conf` immutable to prevent other services from modifying it.
-4.  Configure NetworkManager to not manage DNS.
-5.  Restart NetworkManager.
+1.  **Check for and install required packages (`unbound`, `unbound-anchor`, `dnsutils`) if missing.**
+2.  Backup the current `/etc/resolv.conf` and `/etc/NetworkManager/NetworkManager.conf`.
+3.  Create a new `/etc/resolv.conf` with the local Unbound resolver as the primary nameserver.
+4.  Make `/etc/resolv.conf` immutable to prevent other services from modifying it.
+5.  Configure NetworkManager to not manage DNS.
+6.  Restart NetworkManager.
 
 ### Applying the Unbound Configuration
 
