@@ -1,0 +1,44 @@
+name: Wiki Sync
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'WIKI.md'
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Sync WIKI.md to GitHub Wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create a temporary directory for the wiki clone
+          CLONE_DIR=$(mktemp -d)
+          
+          # Clone the wiki repository
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git" "$CLONE_DIR"
+          
+          # Copy WIKI.md to the wiki's Home.md
+          cp WIKI.md "$CLONE_DIR/Home.md"
+          
+          # Commit and push changes
+          cd "$CLONE_DIR"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Home.md
+          
+          # Only commit if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Wiki Home from master: ${{ github.sha }}"
+            git push
+          else
+            echo "No changes to sync."
+          fi
