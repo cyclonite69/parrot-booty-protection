@@ -6,7 +6,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Last Commit](https://img.shields.io/github/last-commit/cyclonite69/dns-hardening-parrot)
 
-**Parrot Booty Protection** is a collection of powerful, interactive scripts designed to significantly improve the security and privacy of your Parrot OS. It ensures your "booty"—your data and identity—remains safe from prying eyes by implementing DNS-over-TLS, a zero-trust firewall, and strict service hardening.
+**Parrot Booty Protection** is a collection of powerful, interactive scripts designed for **Parrot OS DNS hardening** and general **Linux security**. It ensures your "booty"—your data and identity—remains safe from prying eyes by implementing **DNS-over-TLS (DoT)**, a **zero-trust nftables firewall**, and strict **service hardening** for Debian-based systems.
 
 ## ✅ Features
 
