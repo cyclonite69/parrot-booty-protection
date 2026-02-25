@@ -58,6 +58,8 @@ get_module_status_color() {
 }
 
 main_menu() {
+    whiptail --msgbox "Welcome to the Hardening Dashboard!" 10 50
+
     while true; do
         options=()
         
