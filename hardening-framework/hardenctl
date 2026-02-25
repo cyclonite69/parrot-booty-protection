@@ -78,11 +78,6 @@ main_menu() {
         
         # Display menu
         # Capture choice from stderr (fd 3)
-        
-        echo "DEBUG: Options array content:"
-        printf '%s\n' "${options[@]}"
-        exit 0
-        
         choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
         
         exit_code=$?
