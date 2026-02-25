@@ -84,9 +84,14 @@ sudo ./hardening-framework/hardenctl
 ```
 
 This launches a TUI where you can toggle:
-- **Kernel Sysctl Hardening:** Secures network stack and kernel parameters.
-- **SSH Hardening:** Disables root login, enforces keys, and secures ciphers.
-- **Total IPv6 Removal:** Completely disables the IPv6 stack via sysctl.
+- **01 Kernel Sysctl:** Network stack hardening (anti-spoofing, SYN cookies).
+- **02 SSH Hardening:** Disables root login, enforcing key-based auth.
+- **04 NTP Hardening:** Configures Chrony with NTS (Network Time Security) and strict authentication.
+- **05 DNS Hardening:** Installs Unbound as a local DoT resolver with DNSSEC.
+- **06 Firewall Base:** Applies a strict nftables ruleset (Default Deny Inbound).
+- **07 IPv6 Removal:** Disables IPv6 via GRUB kernel parameter (Reboot required).
+- **10 Malware Detect:** Sets up rkhunter/chkrootkit/lynis with daily scans.
+- **20 Container Stabilization:** Fixes Podman/Docker CLI, enables rootless containers.
 
 ### Adding Modules
 

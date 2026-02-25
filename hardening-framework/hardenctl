@@ -1,5 +1,5 @@
 #!/bin/bash
-# hardenctl - Central Control Interface for Hardening Framework
+# hardenctl - Security Control Dashboard
 # USAGE: sudo ./hardenctl
 
 # Source core components
@@ -7,12 +7,54 @@ source "$(dirname "$0")/core/logger.sh"
 source "$(dirname "$0")/core/state_manager.sh"
 
 MODULES_DIR="$(dirname "$0")/modules"
-TITLE="Linux Hardening Framework"
+TITLE="Linux Hardening Control Dashboard"
+BACKTITLE="Parrot Booty Protection - Modular Security Framework"
+
+# Colors for TUI
+export NEWT_COLORS='
+root=,blue
+window=,lightgray
+border=black,lightgray
+shadow=black,gray
+button=black,green
+actbutton=white,green
+compactbutton=black,lightgray
+title=black,lightgray
+roottext=white,blue
+textbox=black,lightgray
+acttextbox=black,cyan
+entry=black,lightgray
+disentry=gray,lightgray
+checkbox=black,lightgray
+actcheckbox=black,cyan
+emptyscale=,gray
+fullscale=,green
+listbox=black,lightgray
+actlistbox=black,cyan
+actsellistbox=black,cyan
+'
 
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
         echo "Error: This script requires root privileges."
         exit 1
+    fi
+}
+
+get_module_status_color() {
+    local module_name="$1"
+    local module_script="$MODULES_DIR/$module_name.sh"
+    
+    # Check if enabled in state file
+    if is_enabled "$module_name" | grep -q "true"; then
+        # Check actual runtime status
+        if source "$module_script" && verify >/dev/null 2>&1; then
+            echo "ON  (Verified)" # Green effectively
+        else
+            echo "ERR (Failed)"   # Red effectively
+        fi
+    else
+        echo "OFF"              # Grey
     fi
 }
 
@@ -23,55 +65,147 @@ main_menu() {
         # Load available modules
         for module in "$MODULES_DIR"/*.sh; do
             module_name=$(basename "$module" .sh)
-            # Skip template
             if [ "$module_name" == "template" ]; then continue; fi
             
-            # Check state
-            if is_enabled "$module_name" | grep -q "true"; then
-                status="[ENABLED]"
-            else
-                status="[DISABLED]"
-            fi
-            
+            status=$(get_module_status_color "$module_name")
             options+=("$module_name" "$status")
         done
         
-        # Display menu using whiptail
-        choice=$(whiptail --title "$TITLE" --menu "Select a module to toggle:" 20 60 10 "${options[@]}" 3>&1 1>&2 2>&3)
+        # Add special options
+        options+=("----------------" "---")
+        options+=("RUN_ALL" "Apply All Modules")
+        options+=("VERIFY_ALL" "Verify All Modules")
+        
+        # Display menu
+        choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
         
         exit_code=$?
         if [ $exit_code -ne 0 ]; then
-            break # User cancelled
+            break # User cancelled/Exit
         fi
         
         if [ -n "$choice" ]; then
-            toggle_module "$choice"
+            if [ "$choice" == "RUN_ALL" ]; then
+                run_all_modules
+            elif [ "$choice" == "VERIFY_ALL" ]; then
+                verify_all_modules
+            elif [ "$choice" == "----------------" ]; then
+                : # Do nothing
+            else
+                manage_module "$choice"
+            fi
         fi
     done
 }
 
-toggle_module() {
+manage_module() {
     local module_name="$1"
     local module_script="$MODULES_DIR/$module_name.sh"
     
     source "$module_script"
     
+    local current_status="Unknown"
     if is_enabled "$module_name" | grep -q "true"; then
-        if whiptail --title "$TITLE" --yesno "Disable $module_name?" 10 40; then
-            rollback
-            save_state "$module_name" "false"
-            whiptail --msgbox "$module_name disabled." 10 40
+        if verify >/dev/null 2>&1; then
+            current_status="Active & Verified"
+        else
+            current_status="Enabled but Verification Failed"
         fi
+        
+        # Action Menu for Enabled Module
+        action=$(whiptail --title "$module_name" --menu "Status: $current_status\n\nChoose Action:" 15 60 4 \
+            "Disable" "Rollback and Disable Module" \
+            "Verify" "Run Verification Tests" \
+            "Reinstall" "Force Re-run Install Procedure" \
+            "Back" "Return to Main Menu" 3>&1 1>&2 2>&3)
+            
+        case "$action" in
+            "Disable")
+                if whiptail --yesno "Are you sure you want to rollback $module_name?" 10 50; then
+                    rollback
+                    save_state "$module_name" "false"
+                    whiptail --msgbox "$module_name disabled." 8 40
+                fi
+                ;;
+            "Verify")
+                if verify; then
+                    whiptail --msgbox "Verification PASSED." 8 40
+                else
+                    whiptail --msgbox "Verification FAILED." 8 40
+                fi
+                ;;
+            "Reinstall")
+                if install; then
+                    save_state "$module_name" "true"
+                    whiptail --msgbox "Reinstallation Successful." 8 40
+                else
+                    whiptail --msgbox "Reinstallation Failed." 8 40
+                fi
+                ;;
+        esac
+
     else
-        if whiptail --title "$TITLE" --yesno "Enable $module_name?" 10 40; then
+        # Action Menu for Disabled Module
+        action=$(whiptail --title "$module_name" --menu "Status: Disabled\n\nChoose Action:" 15 60 3 \
+            "Enable" "Install and Enable Module" \
+            "Verify" "Check if active (even if disabled)" \
+            "Back" "Return to Main Menu" 3>&1 1>&2 2>&3)
+            
+        case "$action" in
+            "Enable")
+                if install; then
+                    save_state "$module_name" "true"
+                    whiptail --msgbox "$module_name enabled successfully." 8 40
+                else
+                    whiptail --msgbox "Failed to enable $module_name. Check logs." 8 40
+                fi
+                ;;
+            "Verify")
+                if verify; then
+                    whiptail --msgbox "Module appears ACTIVE (Manual config?)" 8 40
+                else
+                    whiptail --msgbox "Module is INACTIVE." 8 40
+                fi
+                ;;
+        esac
+    fi
+}
+
+run_all_modules() {
+    if whiptail --yesno "WARNING: This will attempt to install ALL hardening modules.\n\nAre you sure?" 12 60; then
+        exec 3>&1
+        for module in "$MODULES_DIR"/*.sh; do
+            module_name=$(basename "$module" .sh)
+            if [ "$module_name" == "template" ]; then continue; fi
+            
+            source "$module"
+            echo "Installing $module_name..."
             if install; then
                 save_state "$module_name" "true"
-                whiptail --msgbox "$module_name enabled." 10 40
+                echo "✓ $module_name Installed"
             else
-                whiptail --msgbox "Failed to enable $module_name. Check logs." 10 40
+                echo "✗ $module_name Failed"
             fi
-        fi
+        done | whiptail --progressbox "Running Hardening Suite..." 20 70
+        exec 3>&-
+        whiptail --msgbox "Batch operation complete. Check logs for details." 8 50
     fi
+}
+
+verify_all_modules() {
+    result_text=""
+    for module in "$MODULES_DIR"/*.sh; do
+        module_name=$(basename "$module" .sh)
+        if [ "$module_name" == "template" ]; then continue; fi
+        
+        source "$module"
+        if verify >/dev/null 2>&1; then
+            result_text="${result_text}${module_name}: PASS\n"
+        else
+            result_text="${result_text}${module_name}: FAIL/INACTIVE\n"
+        fi
+    done
+    whiptail --title "Verification Report" --msgbox "$result_text" 20 60
 }
 
 # --- Entry Point ---

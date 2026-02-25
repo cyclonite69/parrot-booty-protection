@@ -2,9 +2,18 @@
 # state_manager.sh - Manages the enabled modules state using JSON
 # Requires: jq
 
-STATE_FILE="state/enabled.json"
+# Determine the absolute path to the framework root
+# This script is located in <root>/core/state_manager.sh
+FRAMEWORK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+STATE_FILE="$FRAMEWORK_ROOT/state/enabled.json"
 
 init_state() {
+    # Ensure the directory exists
+    if [ ! -d "$(dirname "$STATE_FILE")" ]; then
+        mkdir -p "$(dirname "$STATE_FILE")"
+    fi
+
+    # Initialize file if missing
     if [ ! -f "$STATE_FILE" ]; then
         echo "{}" > "$STATE_FILE"
     fi
@@ -16,6 +25,9 @@ save_state() {
     
     local tmp_file=$(mktemp)
     
+    # Ensure state file exists before reading/writing
+    init_state
+    
     if [ "$enabled" = "true" ]; then
         jq --arg mod "$module_name" '.[$mod] = true' "$STATE_FILE" > "$tmp_file"
     else
@@ -23,6 +35,10 @@ save_state() {
     fi
     
     mv "$tmp_file" "$STATE_FILE"
+    # Ensure correct permissions if run as root
+    if [ -n "$SUDO_USER" ]; then
+        chown "$SUDO_USER" "$STATE_FILE" 2>/dev/null || true
+    fi
 }
 
 is_enabled() {

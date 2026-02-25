@@ -18,6 +18,21 @@
 -   **Modular Framework**: A new extensible system to manage all hardening policies from a central controller (`hardenctl`).
 -   **Robust & Reversible**: All scripts are designed to be idempotent and include mechanisms to revert changes.
 
+## 🛡️ Modular Hardening Framework
+
+Manage all security policies via the central controller: `sudo ./hardening-framework/hardenctl`
+
+| Module | Description | Key Features |
+| :--- | :--- | :--- |
+| **01 Sysctl Hardening** | Kernel network stack security | Anti-spoofing, SYN cookies, varying IP ID |
+| **02 SSH Hardening** | Secure SSH Daemon | No root login, key-only auth, strong ciphers |
+| **04 NTP Hardening** | Encrypted Time (NTS) | Authenticated time sync via Cloudflare/Netnod |
+| **05 DNS Hardening** | Encrypted DNS (DoT) | Local Unbound resolver, DNSSEC, Anti-leak |
+| **06 Firewall Base** | Zero-Trust nftables | Default deny inbound, stateful outbound, NTS/DoT allowed |
+| **07 IPv6 Removal** | Total IPv6 Disable | Disables IPv6 stack via GRUB kernel parameter (Reboot required) |
+| **10 Malware Detect** | Integrity Monitoring | rkhunter, chkrootkit, lynis with daily auto-scans |
+| **20 Container Stab.** | Podman/Docker Fixes | Rootless support, docker-compose plugin, socket activation |
+
 ## 🚀 Quick Start
 
 1.  **Clone the repository:**
