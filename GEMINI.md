@@ -7,6 +7,7 @@ This project provides a set of scripts and configuration files to harden the DNS
 The core components of this project are:
 -   **Unbound:** A local DNS resolver configured to use DNS over TLS to encrypt DNS queries to upstream providers like Cloudflare and Quad9. It also performs DNSSEC validation to protect against DNS spoofing.
 -   **nftables:** A firewall configured to restrict network traffic, only allowing essential services. This helps to prevent DNS leaks and other potential attacks.
+-   **Modular Hardening Framework:** A centralized system (`hardenctl`) to manage various security policies (Sysctl, SSH, etc.) as independent modules.
 -   **Shell Scripts:** A collection of scripts to automate the process of hardening, restoring, and monitoring the DNS configuration.
 
 ## Key Files
@@ -14,6 +15,8 @@ The core components of this project are:
 | File | Description |
 | --- | --- |
 | `README.md` | The main documentation for the project, providing a comprehensive guide to installation, usage, and troubleshooting. |
+| `hardening-framework/hardenctl` | The central TUI control interface for all hardening modules. |
+| `hardening-framework/modules/` | Directory containing individual hardening modules (Sysctl, SSH, etc.). |
 | `scripts/dns_harden.sh` | The main script for applying the DNS hardening. It configures `/etc/resolv.conf`, makes it immutable, and restarts NetworkManager. |
 | `scripts/dns_restore.sh` | A script to restore the default DNS configuration, in case of any issues. |
 | `scripts/dns_monitor.sh` | A script to monitor the status of the DNS hardening and log any changes. |
@@ -69,6 +72,25 @@ You can check the status of the DNS hardening at any time by running:
 ```
 
 To set up automatic monitoring, you can use the `dns_monitoring_install.sh` script, which will set up a cron job to run `dns_monitor.sh` periodically.
+
+## Modular Hardening Framework
+
+The project now includes a extensible framework for general system hardening.
+
+### Usage
+
+```bash
+sudo ./hardening-framework/hardenctl
+```
+
+This launches a TUI where you can toggle:
+- **Kernel Sysctl Hardening:** Secures network stack and kernel parameters.
+- **SSH Hardening:** Disables root login, enforces keys, and secures ciphers.
+- **Total IPv6 Removal:** Completely disables the IPv6 stack via sysctl.
+
+### Adding Modules
+
+New modules can be added by placing a bash script in `hardening-framework/modules/` following the `template.sh` structure.
 
 ## Development Conventions
 

@@ -1,0 +1,80 @@
+#!/bin/bash
+# hardenctl - Central Control Interface for Hardening Framework
+# USAGE: sudo ./hardenctl
+
+# Source core components
+source "$(dirname "$0")/core/logger.sh"
+source "$(dirname "$0")/core/state_manager.sh"
+
+MODULES_DIR="$(dirname "$0")/modules"
+TITLE="Linux Hardening Framework"
+
+check_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "Error: This script requires root privileges."
+        exit 1
+    fi
+}
+
+main_menu() {
+    while true; do
+        options=()
+        
+        # Load available modules
+        for module in "$MODULES_DIR"/*.sh; do
+            module_name=$(basename "$module" .sh)
+            # Skip template
+            if [ "$module_name" == "template" ]; then continue; fi
+            
+            # Check state
+            if is_enabled "$module_name" | grep -q "true"; then
+                status="[ENABLED]"
+            else
+                status="[DISABLED]"
+            fi
+            
+            options+=("$module_name" "$status")
+        done
+        
+        # Display menu using whiptail
+        choice=$(whiptail --title "$TITLE" --menu "Select a module to toggle:" 20 60 10 "${options[@]}" 3>&1 1>&2 2>&3)
+        
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            break # User cancelled
+        fi
+        
+        if [ -n "$choice" ]; then
+            toggle_module "$choice"
+        fi
+    done
+}
+
+toggle_module() {
+    local module_name="$1"
+    local module_script="$MODULES_DIR/$module_name.sh"
+    
+    source "$module_script"
+    
+    if is_enabled "$module_name" | grep -q "true"; then
+        if whiptail --title "$TITLE" --yesno "Disable $module_name?" 10 40; then
+            rollback
+            save_state "$module_name" "false"
+            whiptail --msgbox "$module_name disabled." 10 40
+        fi
+    else
+        if whiptail --title "$TITLE" --yesno "Enable $module_name?" 10 40; then
+            if install; then
+                save_state "$module_name" "true"
+                whiptail --msgbox "$module_name enabled." 10 40
+            else
+                whiptail --msgbox "Failed to enable $module_name. Check logs." 10 40
+            fi
+        fi
+    fi
+}
+
+# --- Entry Point ---
+check_root
+init_state
+main_menu

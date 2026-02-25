@@ -15,6 +15,7 @@
 -   **Man the Cannons**: An interactive wizard to build a strict `nftables` firewall policy, allowing only the traffic you explicitly permit.
 -   **Batten down the Hatches**: Interactively scan for and disable unnecessary system services to minimize attack surface.
 -   **Fix Docker DNS**: Automatically solves the common DNS resolution issue for containers when using a local DNS resolver.
+-   **Modular Framework**: A new extensible system to manage all hardening policies from a central controller (`hardenctl`).
 -   **Robust & Reversible**: All scripts are designed to be idempotent and include mechanisms to revert changes.
 
 ## 🚀 Quick Start
@@ -24,10 +25,14 @@
     git clone https://github.com/cyclonite69/dns-hardening-parrot.git
     cd dns-hardening-parrot
     ```
-2.  **Run the hardening wizards:**
+
+2.  **Use the Modular Controller (Recommended):**
     ```bash
-    # Harden your firewall first (most impactful)
-    sudo ./scripts/port_harden.sh
+    # Launch the central hardening control panel
+    sudo ./hardening-framework/hardenctl
+    ```
+
+3.  **Or run individual hardening wizards:**
 
     # Then, harden system services
     sudo ./scripts/service_harden.sh
@@ -47,6 +52,7 @@
 
 | Script | Purpose | Usage |
 | :--- | :--- | :--- |
+| `hardenctl` | Central TUI controller for all modular hardening policies. | `sudo ./hardening-framework/hardenctl` |
 | `port_harden.sh` | Interactively create a zero-trust `nftables` firewall. | `sudo ./scripts/port_harden.sh` |
 | `service_harden.sh` | Interactively disable unnecessary system services. | `sudo ./scripts/service_harden.sh` |
 | `ntp_harden.sh` | Configures Chrony with NTS for secure time sync. | `sudo ./scripts/ntp_harden.sh` |
