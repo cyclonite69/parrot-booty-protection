@@ -10,6 +10,10 @@ MODULES_DIR="$(dirname "$0")/modules"
 TITLE="Linux Hardening Control Dashboard"
 BACKTITLE="Parrot Booty Protection - Modular Security Framework"
 
+# --- Global Module Log ---
+# This will be set for each module's execution context
+MODULE_RUN_LOG=""
+
 # Check Dependencies
 check_dependencies() {
     local missing=0
@@ -74,15 +78,12 @@ main_menu() {
         options+=("RUN_ALL" "Apply All Modules")
         options+=("VERIFY_ALL" "Verify All Modules")
         
-        # Display menu
-        # This is the original complex redirection that works for whiptail
         choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
         
         exit_code=$?
         
         if [ $exit_code -ne 0 ]; then
-            # 1 = Cancel, 255 = ESC
-            break
+            break # User cancelled
         fi
         
         if [ -n "$choice" ]; then
@@ -101,93 +102,136 @@ manage_module() {
     local module_name="$1"
     local module_script="$MODULES_DIR/$module_name.sh"
     
-    source "$module_script"
-    
-    local current_status="Unknown"
-    if is_enabled "$module_name" | grep -q "true"; then
-        if verify >/dev/null 2>&1; then
-            current_status="Active & Verified"
-        else
-            current_status="Enabled but Verification Failed"
+    # Create a temporary log file for this module's run
+    MODULE_RUN_LOG=$(mktemp "/tmp/${module_name}_run_XXXXXX.log")
+    log_info "Starting $module_name run. Logs to $MODULE_RUN_LOG"
+
+    # Source the module in a subshell, redirecting its output to the log file
+    # This also sets MODULE_RUN_LOG for the sourced script if it wants to append to it
+    (
+        export MODULE_RUN_LOG
+        source "$module_script"
+        local -a ACTIONS=("install" "rollback" "verify" "status") # All functions that might be called
+        
+        # Define functions to capture their output if not already defined
+        for action in "${ACTIONS[@]}"; do
+            if ! declare -f "$action" > /dev/null; then
+                eval "$action() { :; }" # Define a dummy function
+            fi
+        done
+        
+        local installed=false
+        if is_enabled "$module_name" | grep -q "true"; then
+            installed=true
+        fi
+
+        local current_status="Unknown"
+        if $installed; then
+            if verify >> "$MODULE_RUN_LOG" 2>&1; then
+                current_status="Active & Verified"
+            else
+                current_status="Enabled but Verification Failed"
+            fi
         fi
         
-        action=$(whiptail --title "$module_name" --menu "Status: $current_status\n\nChoose Action:" 15 60 4 \
+        action=$(whiptail --title "$module_name" --menu "Status: $current_status\n\nChoose Action:" 18 70 5 \
+            "Enable" "Install and Enable Module" \
             "Disable" "Rollback and Disable Module" \
             "Verify" "Run Verification Tests" \
             "Reinstall" "Force Re-run Install Procedure" \
-            "Back" "Return to Main Menu" 3>&1 1>&2 2>&3)
-            
-        case "$action" in
-            "Disable")
-                if whiptail --yesno "Are you sure you want to rollback $module_name?" 10 50; then
-                    rollback
-                    save_state "$module_name" "false"
-                    whiptail --msgbox "$module_name disabled." 8 40
-                fi
-                ;;
-            "Verify")
-                if verify; then
-                    whiptail --msgbox "Verification PASSED." 8 40
-                else
-                    whiptail --msgbox "Verification FAILED." 8 40
-                fi
-                ;;
-            "Reinstall")
-                if install; then
-                    save_state "$module_name" "true"
-                    whiptail --msgbox "Reinstallation Successful." 8 40
-                else
-                    whiptail --msgbox "Reinstallation Failed." 8 40
-                fi
-                ;;
-        esac
-
-    else
-        action=$(whiptail --title "$module_name" --menu "Status: Disabled\n\nChoose Action:" 15 60 3 \
-            "Enable" "Install and Enable Module" \
-            "Verify" "Check if active (even if disabled)" \
+            "ViewLog" "View Last Operation Log" \
             "Back" "Return to Main Menu" 3>&1 1>&2 2>&3)
             
         case "$action" in
             "Enable")
-                if install; then
-                    save_state "$module_name" "true"
-                    whiptail --msgbox "$module_name enabled successfully." 8 40
+                if ! $installed; then # Only enable if not already installed
+                    if install >> "$MODULE_RUN_LOG" 2>&1; then
+                        save_state "$module_name" "true"
+                        whiptail --msgbox "$module_name enabled successfully. See log for details." 8 50
+                    else
+                        whiptail --msgbox "Failed to enable $module_name. See log for details." 8 50
+                    fi
                 else
-                    whiptail --msgbox "Failed to enable $module_name. Check logs." 8 40
+                    whiptail --msgbox "$module_name is already enabled. Use Reinstall to re-run." 8 50
+                fi
+                ;;
+            "Disable")
+                if $installed; then # Only disable if installed
+                    if whiptail --yesno "Are you sure you want to rollback $module_name?" 10 50; then
+                        rollback >> "$MODULE_RUN_LOG" 2>&1
+                        save_state "$module_name" "false"
+                        whiptail --msgbox "$module_name disabled. See log for details." 8 40
+                    fi
+                else
+                    whiptail --msgbox "$module_name is not enabled." 8 50
                 fi
                 ;;
             "Verify")
-                if verify; then
-                    whiptail --msgbox "Module appears ACTIVE (Manual config?)" 8 40
+                if verify >> "$MODULE_RUN_LOG" 2>&1; then
+                    whiptail --msgbox "Verification PASSED. See log for details." 8 40
                 else
-                    whiptail --msgbox "Module is INACTIVE." 8 40
+                    whiptail --msgbox "Verification FAILED. See log for details." 8 40
+                fi
+                ;;
+            "Reinstall")
+                if whiptail --yesno "Are you sure you want to force reinstall $module_name?" 10 50; then
+                    # Force a rollback first, then install
+                    rollback >> "$MODULE_RUN_LOG" 2>&1
+                    install >> "$MODULE_RUN_LOG" 2>&1
+                    if [ $? -eq 0 ]; then
+                        save_state "$module_name" "true"
+                        whiptail --msgbox "Reinstallation Successful. See log for details." 8 50
+                    else
+                        whiptail --msgbox "Reinstallation Failed. See log for details." 8 50
+                    fi
+                fi
+                ;;
+            "ViewLog")
+                if [ -s "$MODULE_RUN_LOG" ]; then # Check if log file exists and is not empty
+                    whiptail --textbox "$MODULE_RUN_LOG" 25 80
+                else
+                    whiptail --msgbox "No log content available for this run." 8 50
                 fi
                 ;;
         esac
-    fi
+    ) # End of subshell for module execution
+
+    # Clean up temp log file
+    rm -f "$MODULE_RUN_LOG" 2>/dev/null
 }
+
 
 run_all_modules() {
     if whiptail --yesno "WARNING: This will attempt to install ALL hardening modules.\n\nAre you sure?" 12 60; then
         exec 3>&1
+        local -a module_run_results=()
         for module in "$MODULES_DIR"/*.sh; do
             module_name=$(basename "$module" .sh)
             if [ "$module_name" == "template" ]; then continue; fi
             
+            # Create a temporary log for this module's batch run
+            MODULE_RUN_LOG=$(mktemp "/tmp/${module_name}_batch_XXXXXX.log")
+            log_info "Starting $module_name batch run. Logs to $MODULE_RUN_LOG"
+
+            # Subshell to protect environment and capture output
             (
+                export MODULE_RUN_LOG
                 source "$module"
                 echo "Installing $module_name..."
-                if install; then
+                if install >> "$MODULE_RUN_LOG" 2>&1; then
                     save_state "$module_name" "true"
                     echo "✓ $module_name Installed"
+                    module_run_results+=("✓ $module_name")
                 else
-                    echo "✗ $module_name Failed"
+                    echo "✗ $module_name Failed (See log: $MODULE_RUN_LOG)"
+                    module_run_results+=("✗ $module_name")
                 fi
-            )
-        done | whiptail --progressbox "Running Hardening Suite..." 20 70
+            ) | whiptail --progressbox "Running Hardening Suite..." 20 70 # Progressbox might not work with this redirection
+            
+            rm -f "$MODULE_RUN_LOG" 2>/dev/null # Clean up temp log after module run
+        done
         exec 3>&-
-        whiptail --msgbox "Batch operation complete. Check logs for details." 8 50
+        whiptail --msgbox "Batch operation complete. Check individual logs and /var/log/hardenctl.log for details.\n\nResults:\n${module_run_results[*]}" 25 80
     fi
 }
 
@@ -197,6 +241,7 @@ verify_all_modules() {
         module_name=$(basename "$module" .sh)
         if [ "$module_name" == "template" ]; then continue; fi
         
+        # Subshell for verification
         status=$(
             source "$module"
             if verify >/dev/null 2>&1; then echo "PASS"; else echo "FAIL/INACTIVE"; fi

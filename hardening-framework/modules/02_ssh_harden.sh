@@ -3,6 +3,8 @@
 # DESCRIPTION: Secures the SSH daemon configuration.
 # DEPENDENCIES: sshd, sed
 
+set -euo pipefail # Fail fast on errors
+
 MODULE_NAME="ssh_harden"
 MODULE_DESC="SSH Hardening"
 MODULE_VERSION="1.0"
@@ -10,51 +12,59 @@ CONFIG_FILE="/etc/ssh/sshd_config"
 BACKUP_FILE="/etc/ssh/sshd_config.bak"
 
 install() {
-    log_info "Backing up SSH configuration..."
+    log_step "Installing SSH Hardening"
+    log_info "Backing up SSH configuration to $BACKUP_FILE..."
     if [ ! -f "$BACKUP_FILE" ]; then
         cp "$CONFIG_FILE" "$BACKUP_FILE"
+        log_info "Original SSH config backed up."
+    else
+        log_warn "SSH backup already exists. Skipping new backup."
     fi
 
-    log_info "Applying SSH hardening..."
+    log_info "Applying SSH hardening rules to $CONFIG_FILE..."
     
     # Use sed to modify the configuration file in place
-    # Disable root login
-    sed -i 's/^PermitRootLogin.*/PermitRootLogin no/' "$CONFIG_FILE" || echo "PermitRootLogin no" >> "$CONFIG_FILE"
-    
-    # Disable password authentication (use keys)
-    sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' "$CONFIG_FILE" || echo "PasswordAuthentication no" >> "$CONFIG_FILE"
-    
-    # Disable empty passwords
-    sed -i 's/^PermitEmptyPasswords.*/PermitEmptyPasswords no/' "$CONFIG_FILE" || echo "PermitEmptyPasswords no" >> "$CONFIG_FILE"
-    
-    # Disable X11 forwarding
-    sed -i 's/^X11Forwarding.*/X11Forwarding no/' "$CONFIG_FILE" || echo "X11Forwarding no" >> "$CONFIG_FILE"
-    
-    # Use Protocol 2 only (usually default, but ensure it)
-    if ! grep -q "^Protocol 2" "$CONFIG_FILE"; then
-         echo "Protocol 2" >> "$CONFIG_FILE"
+    # Function to update or add a config line
+    update_or_add_config() {
+        local key="$1"
+        local value="$2"
+        if grep -q "^[[:space:]]*$key" "$CONFIG_FILE"; then
+            sed -i "s/^[[:space:]]*$key.*/$key $value/" "$CONFIG_FILE"
+            log_info "Updated '$key' to '$value'."
+        else
+            echo "$key $value" >> "$CONFIG_FILE"
+            log_info "Added '$key' with value '$value'."
+        fi
+    }
+
+    update_or_add_config "PermitRootLogin" "no"
+    update_or_add_config "PasswordAuthentication" "no"
+    update_or_add_config "PermitEmptyPasswords" "no"
+    update_or_add_config "X11Forwarding" "no"
+    update_or_add_config "MaxAuthTries" "3"
+    update_or_add_config "LoginGraceTime" "60"
+
+    # Ensure Protocol 2 only
+    if ! grep -q "^[[:space:]]*Protocol 2" "$CONFIG_FILE"; then
+         sed -i '/^#[[:space:]]*Protocol/a Protocol 2' "$CONFIG_FILE" # Add after commented out Protocol
+         if ! grep -q "^[[:space:]]*Protocol 2" "$CONFIG_FILE"; then # If still not there, add to end
+             echo "Protocol 2" >> "$CONFIG_FILE"
+         fi
+         log_info "Ensured 'Protocol 2' is set."
     fi
-    
-    # Restrict allowed users (Example: only current user)
-    # AllowUsers $USER (This is risky if the user doesn't exist or is root, so we skip it for safety in this template)
-    
-    # Set MaxAuthTries
-    sed -i 's/^MaxAuthTries.*/MaxAuthTries 3/' "$CONFIG_FILE" || echo "MaxAuthTries 3" >> "$CONFIG_FILE"
-    
-    # Set LoginGraceTime
-    sed -i 's/^LoginGraceTime.*/LoginGraceTime 60/' "$CONFIG_FILE" || echo "LoginGraceTime 60" >> "$CONFIG_FILE"
     
     # Disable weak ciphers/MACs (Example configuration - adjust for compatibility)
     # KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256
-    # Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+    # Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
     # MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com
 
-    # Validate configuration before restart
-    if sshd -t; then
-        log_info "Configuration valid. Restarting SSH service..."
+    log_info "Testing SSH configuration syntax..."
+    if sshd -t -f "$CONFIG_FILE"; then
+        log_info "SSH configuration syntax is valid. Restarting SSH service..."
         systemctl restart sshd
+        log_info "SSH service restarted."
     else
-        log_error "SSH configuration test failed! Reverting..."
+        log_error "SSH configuration test failed! Reverting changes..."
         rollback
         return 1
     fi
@@ -63,14 +73,14 @@ install() {
         log_info "SSH Hardening applied successfully."
         return 0
     else
-        log_error "SSH Hardening verification failed."
-        rollback
+        log_error "SSH Hardening failed verification."
         return 1
     fi
 }
 
 status() {
-    if grep -q "PermitRootLogin no" "$CONFIG_FILE" && grep -q "PasswordAuthentication no" "$CONFIG_FILE"; then
+    if grep -q "PermitRootLogin no" "$CONFIG_FILE" 2>/dev/null && \
+       grep -q "PasswordAuthentication no" "$CONFIG_FILE" 2>/dev/null; then
         echo "active"
     else
         echo "inactive"
@@ -78,22 +88,37 @@ status() {
 }
 
 verify() {
+    log_info "Verifying SSH hardening..."
     # Check current runtime configuration
     # Note: sshd -T validates config syntax and outputs effective configuration
-    if sshd -T | grep -q "permitrootlogin no"; then
+    if sshd -T -f "$CONFIG_FILE" | grep -q "permitrootlogin no"; then
+        log_info "PermitRootLogin is 'no'."
         return 0
     else
+        log_error "PermitRootLogin is NOT 'no'."
         return 1
     fi
 }
 
 rollback() {
-    log_info "Rolling back SSH Hardening..."
+    log_step "Rolling back SSH Hardening"
+    log_info "Rolling back SSH configuration..."
     if [ -f "$BACKUP_FILE" ]; then
         cp "$BACKUP_FILE" "$CONFIG_FILE"
-        log_info "Restored from backup. Restarting SSH..."
+        log_info "Restored original SSH config from backup. Restarting SSH..."
         systemctl restart sshd
+        log_info "SSH service restarted."
     else
-        log_warn "Backup file not found. Manual intervention required."
+        log_warn "Backup file not found ($BACKUP_FILE). Manual intervention may be required."
+        log_info "Attempting to revert common changes..."
+        sed -i '/PermitRootLogin no/d' "$CONFIG_FILE"
+        sed -i '/PasswordAuthentication no/d' "$CONFIG_FILE"
+        sed -i '/PermitEmptyPasswords no/d' "$CONFIG_FILE"
+        sed -i '/X11Forwarding no/d' "$CONFIG_FILE"
+        sed -i '/MaxAuthTries 3/d' "$CONFIG_FILE"
+        sed -i '/LoginGraceTime 60/d' "$CONFIG_FILE"
+        sed -i '/Protocol 2/d' "$CONFIG_FILE" # Remove if added
+        systemctl restart sshd || true # Attempt restart, ignore if it fails
     fi
+    log_info "SSH rollback complete."
 }
