@@ -10,10 +10,17 @@ log_level() {
     local timestamp=$(date -Iseconds)
     local caller="${BASH_SOURCE[2]##*/}:${BASH_LINENO[1]}"
     
-    echo "[${timestamp}] [${level}] [${caller}] ${message}" | tee -a "${PBP_AUDIT_LOG}" >&2
+    local log_msg="[${timestamp}] [${level}] [${caller}] ${message}"
+    
+    # Try to write to log file if directory exists, otherwise just stderr
+    if [[ -d "${PBP_LOG_DIR}" ]]; then
+        echo "${log_msg}" | tee -a "${PBP_AUDIT_LOG}" >&2
+    else
+        echo "${log_msg}" >&2
+    fi
     
     if [[ "${level}" == "ERROR" || "${level}" == "CRITICAL" ]]; then
-        logger -t pbp -p user.err "${level}: ${message}"
+        logger -t pbp -p user.err "${level}: ${message}" 2>/dev/null || true
     fi
 }
 

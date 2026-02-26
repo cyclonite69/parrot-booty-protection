@@ -16,14 +16,15 @@ validate_os() {
     
     source /etc/os-release
     
-    if [[ "$ID" != "parrot" && "$ID_LIKE" != *"debian"* ]]; then
-        log_warn "Not running on Parrot OS or Debian-based system"
-        log_warn "Detected: ${PRETTY_NAME}"
-        return 1
+    # Accept Parrot OS or any Debian-based system
+    if [[ "$ID" == "parrot" || "$ID" == "debian" || "${ID_LIKE:-}" == *"debian"* ]]; then
+        log_info "OS validated: ${PRETTY_NAME:-$ID}"
+        return 0
     fi
     
-    log_info "OS validated: ${PRETTY_NAME}"
-    return 0
+    log_warn "Not running on Parrot OS or Debian-based system"
+    log_warn "Detected: ${PRETTY_NAME:-Unknown}"
+    return 1
 }
 
 validate_root() {
