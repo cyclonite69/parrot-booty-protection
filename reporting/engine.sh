@@ -2,7 +2,8 @@
 # PBP Universal Reporting Engine
 set -euo pipefail
 
-PBP_ROOT="${PBP_ROOT:-/opt/pbp}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PBP_ROOT="${PBP_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 REPORT_ROOT="/var/log/pbp/reports"
 
 source "${PBP_ROOT}/core/lib/logging.sh"

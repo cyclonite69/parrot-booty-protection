@@ -3,7 +3,8 @@
 
 set -euo pipefail
 
-PBP_ROOT="${PBP_ROOT:-/opt/pbp}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PBP_ROOT="${PBP_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 PBP_MODULES_DIR="${PBP_MODULES_DIR:-${PBP_ROOT}/modules}"
 
 source "${PBP_ROOT}/core/lib/logging.sh"

@@ -3,7 +3,8 @@
 
 set -euo pipefail
 
-PBP_ROOT="${PBP_ROOT:-/opt/pbp}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PBP_ROOT="${PBP_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 source "${PBP_ROOT}/core/lib/report.sh"
 
 echo "Scanning with example module..."
