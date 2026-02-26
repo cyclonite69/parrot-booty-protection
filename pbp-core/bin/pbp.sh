@@ -9,7 +9,8 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  status    Show ship's security state and exposure score"
-    echo "  watch     Launch the Tactical Dashboard (War Room)"
+    echo "  watch     Launch the Tactical Dashboard (Terminal War Room)"
+    echo "  ops       Show instructions for the Web Ops Console"
     echo "  scan      Run all monitoring modules immediately"
     echo "  learn     Establish the baseline system profile"
     echo "  harden    Enter the Hardening Framework Dashboard"
@@ -29,6 +30,11 @@ case "${1-}" in
     "watch")
         /opt/pbp/bin/pbp-dashboard.sh
         ;;
+    "ops")
+        echo -e "${CYAN}🏴‍☠️ Web Ops Console is active!${NC}"
+        echo "Point your browser to: http://localhost:8080"
+        echo "Manage modules, run scans, and view the ledger from the Quarterdeck."
+        ;;
     "harden")
         sudo /home/dbcooper/parrot-booty-protection/hardening-framework/hardenctl
         ;;
@@ -36,10 +42,15 @@ case "${1-}" in
         /opt/pbp/bin/pbp-respond.sh
         ;;
     "report")
-        # Interactive Report Explorer
+        # Unified Report Explorer (Terminal version)
         local options=()
-        for f in /opt/pbp/reports/*; do
-            [ -f "$f" ] && options+=("$(basename "$f")" "Security Audit")
+        # Search in both old and new report locations
+        for d in /opt/pbp/reports /opt/parrot-booty-protection/reports/*; do
+            if [ -d "$d" ]; then
+                for f in "$d"/*; do
+                    [ -f "$f" ] && options+=("$(basename "$f")" "Security Audit")
+                done
+            fi
         done
         
         if [ ${#options[@]} -eq 0 ]; then
@@ -49,7 +60,9 @@ case "${1-}" in
 
         choice=$(whiptail --title "The Captain's Great Ledger" --menu "Select a report to view:" 20 70 10 "${options[@]}" 3>&1 1>&2 2>&3)
         if [ $? -eq 0 ]; then
-            whiptail --textbox "/opt/pbp/reports/$choice" 25 90
+            # Find the file again to show it
+            local full_path=$(find /opt/pbp/reports /opt/parrot-booty-protection/reports -name "$choice" | head -1)
+            whiptail --textbox "$full_path" 25 90
         fi
         ;;
     "learn")
@@ -57,21 +70,26 @@ case "${1-}" in
         ;;
     "scan")
         echo -e "${CYAN}Manning the lookout... Running all modules.${NC}"
-        for m in /opt/pbp/modules/*.sh; do [ -x "$m" ] && "$m"; done
+        for m in /opt/pbp/modules/*.sh /opt/parrot-booty-protection/modules/*/run.sh; do 
+            if [ -x "$m" ]; then
+                echo "Executing $(basename $(dirname "$m"))..."
+                "$m"
+            fi
+        done
         echo -e "${GREEN}Scan complete.${NC}"
         ;;
     "forensic")
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         FILE="/opt/pbp/forensics/pbp_snapshot_$TIMESTAMP.tar.gz"
         echo -e "${RED}🏴‍☠️ SECURING THE SHIP... Collecting evidence.${NC}"
-        tar -czf "$FILE" /etc/resolv.conf /etc/ssh/sshd_config /opt/pbp/logs /opt/pbp/reports 2>/dev/null
+        tar -czf "$FILE" /etc/resolv.conf /etc/ssh/sshd_config /opt/pbp/logs /opt/pbp/reports /opt/parrot-booty-protection/reports 2>/dev/null
         echo -e "${GREEN}Evidence locked in the brig: $FILE${NC}"
         ;;
     "selfcheck")
         echo "--- PBP Self Check ---"
         systemctl is-active pbp-sentinel && echo "Sentinel: RUNNING" || echo "Sentinel: DOWN"
+        systemctl is-active pbp-ops && echo "Web Ops: RUNNING" || echo "Web Ops: DOWN"
         [ -w "/opt/pbp/reports" ] && echo "Reports: WRITABLE"
-        # Verify Firewall
         systemctl is-active --quiet nftables && echo "Firewall: ACTIVE" || echo "Firewall: DOWN"
         ;;
     *)

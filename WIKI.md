@@ -1,119 +1,94 @@
 # 🏴‍☠️ Parrot Booty Protection Wiki
 
-Welcome to the **Parrot Booty Protection** Wiki. This comprehensive guide details how to safeguard your digital treasure—your data, privacy, and system integrity—using our suite of security tools.
+Welcome to the **Parrot Booty Protection** Wiki. This comprehensive guide details how to safeguard your digital treasure using our full-scale **Security Operations Console**.
 
 ## 🧭 Table of Contents
 
 1.  [Mission & Philosophy](#-mission--philosophy)
-2.  [The War Room (Modular Framework)](#-the-war-room-modular-framework)
-3.  [Getting Started](#-getting-started)
-4.  [Hardening Guide](#-hardening-guide)
-    *   [Step 1: Man the Cannons (Firewall)](#step-1-man-the-cannons-firewall)
-    *   [Step 2: Batten down the Hatches (Services)](#step-2-batten-down-the-hatches-services)
-    *   [Step 3: Secure the Lines (DNS)](#step-3-secure-the-lines-dns)
-5.  [DNS Deep Dive: Unbound & TLS](#-dns-deep-dive-unbound--tls)
+2.  [The Command Center (Web Ops Console)](#-the-command-center-web-ops-console)
+3.  [The War Room (Modular Framework)](#-the-war-room-modular-framework)
+4.  [Getting Started](#-getting-started)
+5.  [Defense Modules](#-defense-modules)
+    *   [Rootkit Sentry](#rootkit-sentry)
+    *   [Network Exposure](#network-exposure)
+    *   [DNS Hardening](#dns-hardening)
+    *   [Encrypted Time (NTS)](#encrypted-time-nts)
 6.  [Maintenance & Monitoring](#-maintenance--monitoring)
-7.  [The Captain's Ledger (Log Explorer)](#-the-captains-ledger-log-explorer)
+7.  [The Captain's Ledger (Reports)](#-the-captains-ledger-reports)
 8.  [Troubleshooting](#-troubleshooting)
 
 ---
 
 ## 🏴‍☠️ Mission & Philosophy
 
-The high seas of the internet are filled with privateers and scoundrels looking to plunder your DNS queries and scan your open ports. **Parrot Booty Protection** is built on a **Zero-Trust Philosophy**:
+The high seas of the internet are filled with privateers and scoundrels. **Parrot Booty Protection** is built on a **Zero-Trust Philosophy**:
 
 *   **Default Deny**: If it's not explicitly allowed, it's blocked.
-*   **Encrypted by Default**: DNS queries shouldn't be readable by anyone but the resolver.
-*   **Minimal Surface Area**: If a service isn't needed, it shouldn't be running.
-*   **Verifiable Security**: Tools to monitor and alert you if your defenses are breached.
+*   **Encrypted by Default**: All signals (DNS, Time) must be encrypted.
+*   **Minimal Surface Area**: Unused ports and services are scuttled.
+*   **Verifiable Security**: Continuous auditing and reporting.
 
 ---
 
-## ⚔️ The War Room (Modular Framework)
+## ⚔️ The Command Center (Web Ops Console)
 
-The modern way to manage your defenses is through the **Modular Hardening Framework**.
+The primary interface for managing your ship's defenses is the **Web Ops Console**.
 
-### The Central Controller: `hardenctl`
-Located at `hardening-framework/hardenctl`, this TUI dashboard is your "War Room." It allows you to:
-*   **Deploy Defenses**: Enable or Disable security modules with a single command.
-*   **Manual Scans**: Trigger immediate security audits (like Malware Scans).
-*   **Report Explorer**: Browse all security logs and reports in one place.
+### The Quarterdeck: `http://localhost:8080`
+Accessible via any local browser, this dashboard provides:
+*   **Live Rigging Status**: Real-time SECURED/UNSECURED indicators.
+*   **Modular Control**: One-click Install and Execution of defenses.
+*   **The Ledger Browser**: Read all security reports directly in the high-contrast UI.
+
+---
+
+## ⚔️ The War Room (TUI)
+
+For those who prefer the terminal, the `hardenctl` dashboard remains available at `hardening-framework/hardenctl`.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-*   **OS**: Parrot OS, Debian, or any Debian-based distribution.
-*   **Privileges**: Sudo/Root access is mandatory for system-level changes.
-*   **Tools**: `git`, `bash`, `whiptail`, `jq`.
+*   **OS**: Parrot OS or Debian.
+*   **Privileges**: Sudo/Root access for system changes.
+*   **Tools**: `python3`, `fastapi`, `uvicorn`, `whiptail`.
 
 ### Installation
 ```bash
 git clone https://github.com/cyclonite69/dns-hardening-parrot.git
 cd dns-hardening-parrot
-# Launch the dashboard
-sudo ./hardening-framework/hardenctl
+sudo bash scripts/install_ops.sh
 ```
 
 ---
 
-## 🛡️ Hardening Guide
+## 🛡️ Defense Modules
 
-While the dashboard is recommended, you can still use our manual scripts.
+### Rootkit Sentry
+Uses `rkhunter` and `chkrootkit` to scan for hidden enemies in the hull.
+*   **Action**: `Run Scan`
+*   **Report**: `reports/rootkit/`
 
-### Step 1: Man the Cannons (Firewall)
-Run the interactive firewall builder or use Module `06`.
-```bash
-sudo ./scripts/port_harden.sh
-```
+### Network Exposure
+Uses `nmap` to perform external-style host validation and service fingerprinting.
+*   **Action**: `Batten Down`
+*   **Report**: HTML-based scan results.
 
-### Step 2: Batten down the Hatches (Services)
-Audit your running services and disable the ones you don't use or use Module `30`.
-```bash
-sudo ./scripts/service_harden.sh
-```
-
-### Step 3: Secure the Lines (DNS)
-Install and configure Unbound for encrypted DNS or use Module `05`.
-```bash
-sudo ./scripts/dns_harden.sh
-```
+### DNS Hardening
+Configures `unbound` for DNS-over-TLS and DNSSEC.
+*   **Action**: `Inspect` to verify DoT signal.
 
 ---
 
-## 🔒 DNS Deep Dive: Unbound & TLS
+## 📜 The Captain's Ledger (Report Viewer)
 
-Our setup uses **Unbound** to provide:
-*   **DNS-over-TLS (DoT)**: Encrypts queries to Cloudflare (1.1.1.1) and Quad9 (9.9.9.9) on port 853.
-*   **DNSSEC**: Validates signatures on DNS records to prevent "Man-in-the-Middle" (MitM) attacks.
-
-### Verification
-To verify your DNS is truly "Hardened":
-1.  **Check TLS connections**: `sudo ss -tnp | grep :853`
-2.  **Check Status**: `sudo ./scripts/dns_status.sh`
-
----
-
-## 📡 Maintenance & Monitoring (The Crow's Nest)
-
-Module `40` (DNS Monitoring) sets up background checks that watch for:
-*   **Immutability**: If `/etc/resolv.conf` is modified, an alert is logged.
-*   **TLS Health**: If Unbound falls back to unencrypted DNS, you'll be notified.
-
-### Logs & Alerts
-*   **Monitor Log**: `/var/log/dns_hardening_monitor.log`
-*   **Alerts Log**: `/var/log/dns_hardening_alerts.log`
-
----
-
-## 📜 The Captain's Ledger (Log Explorer)
-
-Module `90` provides the **Global Log Explorer**. Instead of hunting through `/var/log/`, use this interface to quickly inspect:
-*   Framework installation logs.
-*   DNS security history.
-*   Malware detection reports (RKHunter, Lynis).
-*   System authentication attempts.
+Every action on the ship is recorded. Use the **Open Ledger** button in the Web UI to view:
+*   Firewall ruleset exports.
+*   NTS synchronization status.
+*   Container security audits.
+*   System compliance summaries.
 
 ---
 
@@ -121,9 +96,9 @@ Module `90` provides the **Global Log Explorer**. Instead of hunting through `/v
 
 | Issue | Potential Solution |
 | :--- | :--- |
-| **No Internet after Firewall** | Run `sudo nft flush ruleset` to reset. |
-| **DNS Resolution Fails** | Check Unbound: `sudo systemctl status unbound`. |
-| **Resolv.conf overwritten** | Use `lsattr /etc/resolv.conf` to check the `i` flag. |
+| **Console not loading** | Run `sudo systemctl restart pbp-ops`. |
+| **Module fails install** | Check `logs/` for the specific install log. |
+| **Network blocked** | Use `sudo nft flush ruleset` to open the ports. |
 
 ---
 

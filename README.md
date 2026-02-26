@@ -1,67 +1,60 @@
-# 🏴‍☠️ Parrot Booty Protection (PBP) Sentinel Platform
+# 🏴‍☠️ Parrot Booty Protection (PBP) Ops Platform
 
-**A continuous defensive security appliance to guard your digital treasure with autonomous monitoring and real-time visibility.**
+**A full-scale Security Operations Console to guard your digital treasure with real-time visibility, modular defenses, and integrated auditing.**
 
 ![OS: Parrot OS / Debian](https://img.shields.io/badge/OS-Parrot%20OS%20%7C%20Debian-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-**Parrot Booty Protection** has evolved from a collection of scripts into a **persistent security sentinel**. It provides continuous awareness, automated threat detection, and a centralized command center to keep your workstation secure on the high seas of the internet.
+**Parrot Booty Protection** has evolved into a comprehensive **Integrated Defense Console**. It provides a high-contrast web dashboard to orchestrate installation, execution, and reporting for all system hardening and auditing modules.
 
 ## ✅ Platform Features
 
--   **🦜 Central Sentinel**: A background daemon (`pbp-sentinel`) that coordinates all monitoring modules and manages the ship's security state.
--   **📈 Exposure Scoring**: A dynamic security posture score (0-100) calculated from firewall status, integrity checks, and network exposure.
--   **🛡️ Automated State Engine**: Automatically shifts ship status from **NORMAL** to **SUSPICIOUS** or **COMPROMISED** based on real-time signals.
--   **🕹️ Defensive Response Center**: Interactive counter-measures to kill suspicious processes, close new ports, or freeze containers.
--   **🖥️ Tactical Dashboard**: A real-time "War Room" TUI (`pbp watch`) showing security posture, active alerts, and listener deltas.
--   **🔍 Continuous Monitoring**:
-    -   **File Integrity**: Daily AIDE scans to detect hull tampering.
-    -   **Persistence Audit**: Watches for unauthorized autostart entries and services.
-    -   **Network Behavior**: Detects unknown listeners and tracks outbound intelligence.
-    -   **Container Watchman**: Monitors Podman/Docker for risky mounts and unapproved images.
--   **⚖️ Forensic Mode**: "Secure The Ship" action to instantly collect evidence snapshots for investigation.
+-   **🕹️ Ops Command Center**: A real-time web dashboard (`http://localhost:8080`) with a high-contrast **"Midnight Quarterdeck"** theme.
+-   **🧩 Selectable Modules**: Plug-and-play architecture for DNS, Firewall, Rootkits, Network, and System hardening.
+-   **📜 The Captain's Ledger**: Integrated report viewer to read timestamped security audits and scan results directly in the browser.
+-   **🦜 Central Sentinel**: Background daemon coordinating autonomous monitoring and real-time state recalculation.
+-   **🖥️ Tactical Display**: Terminal-based "War Room" (`pbp watch`) for quick security posture checks.
+-   **🔍 Comprehensive Auditing**:
+    -   **Rootkit Sentry**: Daily and manual scans for deep system threats.
+    -   **Network Exposure**: Detailed port and service auditing using Nmap.
+    -   **DNS & Time**: Hardened DoT and NTS-authenticated signals.
+-   **⚖️ Forensic Mode**: "Secure The Ship" action to instantly collect evidence snapshots.
 
 ## 🚀 Quick Start
 
-1.  **Deploy the Sentinel**:
+1.  **Deploy the Fleet**:
     ```bash
     git clone https://github.com/cyclonite69/dns-hardening-parrot.git
     cd dns-hardening-parrot
-    sudo bash install_pbp.sh
+    sudo bash scripts/install_ops.sh
     ```
 
-2.  **Map the Rigging (Learning Mode)**:
+2.  **Access the Quarterdeck**:
+    Open your browser to: **`http://localhost:8080`**
+
+3.  **Map the Rigging**:
     ```bash
     sudo pbp learn
     ```
 
-3.  **Enter the War Room**:
-    ```bash
-    pbp watch
-    ```
-
 ## 📜 Unified Command CLI
 
-The `pbp` command is your central interface:
+The `pbp` command coordinates the entire platform:
 
 | Command | Purpose |
 | :--- | :--- |
+| `pbp ops` | Show instructions for the Web Ops Console. |
+| `pbp watch` | Launch the real-time Tactical Dashboard (Terminal). |
 | `pbp status` | Show ship's security state and exposure score. |
-| `pbp watch` | Launch the real-time Tactical Dashboard. |
-| `pbp scan` | Run all monitoring modules immediately. |
 | `pbp respond` | Launch the Defensive Response Center for counter-measures. |
-| `pbp report` | Interactive menu to browse all security audits and alerts. |
+| `pbp report` | Interactive menu to browse all security audits (Terminal). |
 | `pbp forensic` | 'Secure The Ship' - Collect an emergency evidence snapshot. |
 | `pbp learn` | Establish the baseline system profile. |
-| `pbp harden` | Launch the original Hardening Framework Dashboard. |
-
-## ⚙️ Modular Hardening
-
-The platform still includes the full modular hardening framework for deep system configuration: `pbp harden`
+| `pbp harden` | Launch the original Hardening Framework TUI. |
 
 ## ⚠️ Safety Requirements
 
--   **Controlled Response**: The system alerts you to threats but never executes destructive actions (like killing processes) without your confirmation.
--   **Safe Isolation**: Host isolation counter-measures allow loopback traffic to ensure you aren't completely locked out of local recovery.
+-   **Non-Destructive**: All hardening modules include configuration backups and support rollback.
+-   **Controlled Response**: Destructive actions (killing processes, freezing containers) require explicit Captain's confirmation.
 
-*“May your booty be guarded and your sentinel ever-watchful.”* 🦜🏴‍☠️
+*“May your booty be guarded and your lines be encrypted.”* 🦜🏴‍☠️
