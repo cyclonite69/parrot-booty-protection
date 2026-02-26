@@ -12,22 +12,30 @@ PBP_ROOT="${PBP_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 fi
 
 init_state() {
-    mkdir -p "${PBP_STATE_DIR}"/{backups,checksums}
-    if [[ ! -f "${PBP_STATE_FILE}" ]]; then
-        echo '{}' > "${PBP_STATE_FILE}"
-        chmod 600 "${PBP_STATE_FILE}"
+    # Only create state if we have write permissions
+    if [[ -w "${PBP_STATE_DIR}" ]] || [[ ! -e "${PBP_STATE_DIR}" && -w "$(dirname "${PBP_STATE_DIR}")" ]]; then
+        mkdir -p "${PBP_STATE_DIR}"/{backups,checksums}
+        if [[ ! -f "${PBP_STATE_FILE}" ]]; then
+            echo '{}' > "${PBP_STATE_FILE}"
+            chmod 600 "${PBP_STATE_FILE}"
+        fi
     fi
 }
 
 get_module_state() {
     local module="$1"
-    init_state
+    # Only init if state file doesn't exist
+    [[ ! -f "${PBP_STATE_FILE}" ]] && init_state
+    # Return empty if state file still doesn't exist (no permissions)
+    [[ ! -f "${PBP_STATE_FILE}" ]] && echo '{}' && return
     jq -r --arg mod "$module" '.[$mod] // empty' "${PBP_STATE_FILE}"
 }
 
 get_module_status() {
     local module="$1"
-    get_module_state "$module" | jq -r '.status // "uninstalled"'
+    local state=$(get_module_state "$module")
+    [[ -z "$state" ]] && echo "uninstalled" && return
+    echo "$state" | jq -r '.status // "uninstalled"'
 }
 
 set_module_state() {
