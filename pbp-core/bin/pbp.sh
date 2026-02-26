@@ -13,6 +13,7 @@ show_help() {
     echo "  scan      Run all monitoring modules immediately"
     echo "  learn     Establish the baseline system profile"
     echo "  harden    Enter the Hardening Framework Dashboard"
+    echo "  respond   Launch the Defensive Response Center"
     echo "  forensic  'Secure The Ship' - Collect evidence snapshot"
     echo "  report    View the latest security reports"
     echo "  selfcheck Verify the PBP Sentinel's health"
@@ -31,13 +32,21 @@ case "${1-}" in
     "harden")
         sudo /home/dbcooper/parrot-booty-protection/hardening-framework/hardenctl
         ;;
+    "respond")
+        /opt/pbp/bin/pbp-respond.sh
+        ;;
     "report")
         # Interactive Report Explorer
         local options=()
-        for f in /opt/pbp/reports/*.txt; do
+        for f in /opt/pbp/reports/*; do
             [ -f "$f" ] && options+=("$(basename "$f")" "Security Audit")
         done
         
+        if [ ${#options[@]} -eq 0 ]; then
+            whiptail --msgbox "No reports found in the ledger." 8 40
+            exit 0
+        fi
+
         choice=$(whiptail --title "The Captain's Great Ledger" --menu "Select a report to view:" 20 70 10 "${options[@]}" 3>&1 1>&2 2>&3)
         if [ $? -eq 0 ]; then
             whiptail --textbox "/opt/pbp/reports/$choice" 25 90
@@ -62,6 +71,8 @@ case "${1-}" in
         echo "--- PBP Self Check ---"
         systemctl is-active pbp-sentinel && echo "Sentinel: RUNNING" || echo "Sentinel: DOWN"
         [ -w "/opt/pbp/reports" ] && echo "Reports: WRITABLE"
+        # Verify Firewall
+        systemctl is-active --quiet nftables && echo "Firewall: ACTIVE" || echo "Firewall: DOWN"
         ;;
     *)
         show_help

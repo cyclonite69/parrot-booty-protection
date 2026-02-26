@@ -1,127 +1,67 @@
-# 🏴‍☠️ Parrot Booty Protection
+# 🏴‍☠️ Parrot Booty Protection (PBP) Sentinel Platform
 
-**A suite of scripts to guard your digital treasure (DNS, firewall, and system services) with a zero-trust philosophy.**
+**A continuous defensive security appliance to guard your digital treasure with autonomous monitoring and real-time visibility.**
 
 ![OS: Parrot OS / Debian](https://img.shields.io/badge/OS-Parrot%20OS%20%7C%20Debian-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Last Commit](https://img.shields.io/github/last-commit/cyclonite69/dns-hardening-parrot)
 
-**Parrot Booty Protection** is a collection of powerful, interactive scripts designed for **Parrot OS DNS hardening** and general **Linux security**. It ensures your "booty"—your data and identity—remains safe from prying eyes by implementing **DNS-over-TLS (DoT)**, a **zero-trust nftables firewall**, and strict **service hardening** for Debian-based systems.
+**Parrot Booty Protection** has evolved from a collection of scripts into a **persistent security sentinel**. It provides continuous awareness, automated threat detection, and a centralized command center to keep your workstation secure on the high seas of the internet.
 
-## ✅ Features
+## ✅ Platform Features
 
--   **Secure the Lines**: Configures `unbound` as a local DNS-over-TLS (DoT) resolver to encrypt your DNS queries.
--   **Guard the Clock**: Configures `chrony` with Network Time Security (NTS) to ensure encrypted and authenticated time synchronization.
--   **Man the Cannons**: An interactive wizard to build a strict `nftables` firewall policy, allowing only the traffic you explicitly permit.
--   **Batten down the Hatches**: Interactively scan for and disable unnecessary system services to minimize attack surface.
--   **Fix Docker DNS**: Automatically solves the common DNS resolution issue for containers when using a local DNS resolver.
--   **Modular Framework**: A new extensible system to manage all hardening policies from a central controller (`hardenctl`).
--   **⚙️ Custom Defenses**: New interactive submenus to pick exactly which services to scuttle and which to keep active.
--   **🔗 Synchronized Cannons**: Service hardening now automatically manages firewall ports—disabling a service also "scuttles" its ports.
--   **Ship's Log & Explorer**: New manual scanning and integrated report viewing for malware and DNS integrity.
--   **Robust & Reversible**: All scripts are designed to be idempotent and include mechanisms to revert changes.
-
-## 🛡️ Modular Hardening Framework
-
-Manage all security policies via the central controller (The War Room): `sudo ./hardening-framework/hardenctl`
-
-| Module | Description | Key Features |
-| :--- | :--- | :--- |
-| **01 Sysctl Hardening** | Kernel network stack security | Anti-spoofing, SYN cookies, varying IP ID |
-| **02 SSH Hardening** | Secure SSH Daemon | No root login, key-only auth, strong ciphers |
-| **04 NTP Hardening** | Encrypted Time (NTS) | Authenticated time sync via Cloudflare/Netnod |
-| **05 DNS Hardening** | Encrypted DNS (DoT) | Local Unbound resolver, DNSSEC, Anti-leak |
-| **06 Firewall Base** | Zero-Trust nftables | Default deny inbound, stateful outbound, NTS/DoT allowed |
-| **07 IPv6 Removal** | Total IPv6 Disable | Disables IPv6 stack via GRUB kernel parameter (Reboot required) |
-| **10 Malware Detect** | Integrity Monitoring | rkhunter, chkrootkit, lynis with **Manual Scan** support |
-| **20 Container Stab.** | Podman/Docker Fixes | Rootless support, docker-compose plugin, socket activation |
-| **30 Service Haden** | Attack Surface Reduction | Disables CUPS, Avahi, and other risky daemons |
-| **40 DNS Monitoring** | The Crow's Nest | Periodic background checks for DNS integrity & DoT status |
-| **50 USB Guard** | Boarding Party Defense | Whitelist-based protection against malicious USB devices |
-| **60 System Audit** | Master-at-Arms' Ledger | Detailed auditing of critical file changes (auditd) |
-| **70 Mount Harden** | Reinforcing the Hull | Sets noexec/nosuid/nodev on temp partitions |
-| **80 Intrusion Prev.** | The Iron Brig | Fail2Ban integration with nftables for failed logins |
-| **85 MAC Privacy** | The Ghost Ship | MAC address randomization for Wi-Fi/Ethernet |
-| **90 Log Explorer** | The Captain's Ledger | Unified interface to browse all security logs and reports |
+-   **🦜 Central Sentinel**: A background daemon (`pbp-sentinel`) that coordinates all monitoring modules and manages the ship's security state.
+-   **📈 Exposure Scoring**: A dynamic security posture score (0-100) calculated from firewall status, integrity checks, and network exposure.
+-   **🛡️ Automated State Engine**: Automatically shifts ship status from **NORMAL** to **SUSPICIOUS** or **COMPROMISED** based on real-time signals.
+-   **🕹️ Defensive Response Center**: Interactive counter-measures to kill suspicious processes, close new ports, or freeze containers.
+-   **🖥️ Tactical Dashboard**: A real-time "War Room" TUI (`pbp watch`) showing security posture, active alerts, and listener deltas.
+-   **🔍 Continuous Monitoring**:
+    -   **File Integrity**: Daily AIDE scans to detect hull tampering.
+    -   **Persistence Audit**: Watches for unauthorized autostart entries and services.
+    -   **Network Behavior**: Detects unknown listeners and tracks outbound intelligence.
+    -   **Container Watchman**: Monitors Podman/Docker for risky mounts and unapproved images.
+-   **⚖️ Forensic Mode**: "Secure The Ship" action to instantly collect evidence snapshots for investigation.
 
 ## 🚀 Quick Start
 
-1.  **Clone the repository:**
+1.  **Deploy the Sentinel**:
     ```bash
     git clone https://github.com/cyclonite69/dns-hardening-parrot.git
     cd dns-hardening-parrot
+    sudo bash install_pbp.sh
     ```
 
-2.  **Enter the War Room (Recommended):**
+2.  **Map the Rigging (Learning Mode)**:
     ```bash
-    # Launch the central hardening control panel
-    sudo ./hardening-framework/hardenctl
+    sudo pbp learn
     ```
-    *From here, you can enable defenses, run manual scans, and view all security logs.*
 
-3.  **Or run individual hardening wizards:**
+3.  **Enter the War Room**:
     ```bash
-    # Secure your system time with NTS
-    sudo ./scripts/ntp_harden.sh
-
-    # Set up encrypted DNS
-    sudo ./scripts/dns_harden.sh
-    
-    # Harden system services
-    sudo ./scripts/service_harden.sh
+    pbp watch
     ```
 
-## 📜 Script Overview
+## 📜 Unified Command CLI
 
-| Script | Purpose | Usage |
-| :--- | :--- | :--- |
-| `hardenctl` | Central TUI controller for all modular hardening policies. | `sudo ./hardening-framework/hardenctl` |
-| `port_harden.sh` | Interactively create a zero-trust `nftables` firewall. | `sudo ./scripts/port_harden.sh` |
-| `service_harden.sh` | Interactively disable unnecessary system services. | `sudo ./scripts/service_harden.sh` |
-| `ntp_harden.sh` | Configures Chrony with NTS for secure time sync. | `sudo ./scripts/ntp_harden.sh` |
-| `dns_harden.sh` | Hardens system DNS to use a local DoT resolver. | `sudo ./scripts/dns_harden.sh` |
-| `dns_restore.sh` | Reverts all changes made by the DNS hardening script. | `sudo ./scripts/dns_restore.sh` |
-| `docker_dns_fix.sh` | Automatically configures DNS for Docker containers. | `sudo ./scripts/docker_dns_fix.sh --apply`|
+The `pbp` command is your central interface:
 
-## 📋 Prerequisites
+| Command | Purpose |
+| :--- | :--- |
+| `pbp status` | Show ship's security state and exposure score. |
+| `pbp watch` | Launch the real-time Tactical Dashboard. |
+| `pbp scan` | Run all monitoring modules immediately. |
+| `pbp respond` | Launch the Defensive Response Center for counter-measures. |
+| `pbp report` | Interactive menu to browse all security audits and alerts. |
+| `pbp forensic` | 'Secure The Ship' - Collect an emergency evidence snapshot. |
+| `pbp learn` | Establish the baseline system profile. |
+| `pbp harden` | Launch the original Hardening Framework Dashboard. |
 
--   A Debian-based system (tested on Parrot OS).
--   `git`, `bash`, and standard networking tools (`ip`, `dig`).
--   Root/sudo privileges are required to run these scripts.
+## ⚙️ Modular Hardening
 
-## ⚙️ Installation
+The platform still includes the full modular hardening framework for deep system configuration: `pbp harden`
 
-The scripts are designed to be self-contained. The hardening script will automatically install required packages like `unbound` and `nftables` if they are missing.
+## ⚠️ Safety Requirements
 
-```bash
-# 1. Update your system (Recommended)
-sudo apt update && sudo apt upgrade -y
+-   **Controlled Response**: The system alerts you to threats but never executes destructive actions (like killing processes) without your confirmation.
+-   **Safe Isolation**: Host isolation counter-measures allow loopback traffic to ensure you aren't completely locked out of local recovery.
 
-# 2. Clone the repository
-git clone https://github.com/cyclonite69/dns-hardening-parrot.git
-cd dns-hardening-parrot
-
-# 3. Make scripts executable
-chmod +x scripts/*.sh
-```
-
-## ⚠️ Security Warnings
-
--   **Firewall**: The `port_harden.sh` script creates a **deny-by-default** firewall. If you configure it incorrectly (e.g., without allowing SSH) and apply the rules, you could lock yourself out of a remote machine.
--   **Root Access**: These scripts make significant, system-wide changes. Read the code and understand what each script does before executing it.
--   **Backups**: While the scripts create backups, you are encouraged to have your own system snapshots or backups as a fallback.
-
-## 📚 Detailed Documentation
-
-For a deeper dive into the architecture, script logic, and advanced configuration, please see our detailed documentation and wiki.
-
-➡️ **[Comprehensive Wiki (WIKI.md)](WIKI.md)**
-➡️ **[Read the Full Documentation (GEMINI.md)](GEMINI.md)**
-
-## 🤝 Contributing
-
-We welcome contributions! Please read our [**Contributing Guidelines (CONTRIBUTING.md)**](CONTRIBUTING.md) to get started with reporting issues, submitting pull requests, and our code style conventions.
-
-## 📜 License
-
-This project is licensed under the MIT License. See the [**LICENSE**](LICENSE) file for details.
+*“May your booty be guarded and your sentinel ever-watchful.”* 🦜🏴‍☠️

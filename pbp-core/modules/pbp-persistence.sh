@@ -4,23 +4,23 @@
 source "/opt/pbp/lib/pbp-lib.sh"
 
 REPORT="$REPORT_DIR/persistence_audit.txt"
+[ ! -f "$BASELINE_FILE" ] && exit 0
+
 echo "--- Persistence Audit: $(date) ---" > "$REPORT"
 
 # 1. Audit Systemd Services
-echo "[Systemd Services]" >> "$REPORT"
-systemctl list-unit-files --type=service | grep "enabled" >> "$REPORT"
+APPROVED_SERVICES=$(cat "$BASELINE_FILE" | grep -Po '"approved_services": "\K[^"]*')
+CURRENT_SERVICES=$(systemctl list-units --type=service --state=running --no-legend | awk '{print $1}' | sort | xargs)
 
-# 2. Audit Cron Jobs
-echo -e "
-[Cron Jobs]" >> "$REPORT"
-for user in $(cut -f1 -d: /etc/passwd); do
-    crontab -u "$user" -l 2>/dev/null | grep -v "^#" && echo "User: $user" >> "$REPORT"
+risk=0
+echo "[Unauthorized Services]" >> "$REPORT"
+for srv in $CURRENT_SERVICES; do
+    if [[ ! " $APPROVED_SERVICES " =~ " $srv " ]]; then
+        echo "Alert: Unknown running service $srv" >> "$REPORT"
+        pbp_alert "WARNING" "PERSISTENCE" "UNKNOWN RUNNING SERVICE detected: $srv"
+        risk=1
+    fi
 done
 
-# 3. Audit shell initialization
-echo -e "
-[Shell Initialization]" >> "$REPORT"
-ls -la /etc/profile.d/ >> "$REPORT"
-ls -la /etc/rc.local 2>/dev/null >> "$REPORT"
-
-pbp_log "PERSISTENCE" "SCAN_COMPLETE" "Persistence report updated."
+pbp_emit_signal "persistence_risk" "$risk"
+pbp_log "PERSISTENCE" "SCAN_COMPLETE" "Persistence audit finished. Risk: $risk"

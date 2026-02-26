@@ -27,10 +27,11 @@ REPORT_FILE="$REPORT_DIR/integrity_alert_$(date +%Y%m%d_%H%M%S).txt"
 
 if sudo aide --check > "$REPORT_FILE" 2>&1; then
     pbp_log "INTEGRITY" "CHECK_PASS" "No tampering detected. The hull is sound."
+    pbp_emit_signal "integrity_violation" "0"
     rm "$REPORT_FILE"
 else
     pbp_alert "HIGH" "INTEGRITY" "FILE TAMPERING DETECTED! Check $REPORT_FILE for details."
-    set_pbp_state "SUSPICIOUS" "File integrity check failed."
+    pbp_emit_signal "integrity_violation" "1"
     
     # Save a summary to the main log
     grep -A 10 "Summary:" "$REPORT_FILE" >> "$LOG_DIR/pbp.log"

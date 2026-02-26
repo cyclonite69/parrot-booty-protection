@@ -19,11 +19,15 @@ while true; do
         fi
     done
 
-    # 2. State Recalculation (Mental Logic)
-    # Check if any high alerts were logged in the last 10 minutes
-    if grep -q "ALERT_HIGH\|ALERT_CRITICAL" "$LOG_DIR/pbp.log"; then
-        set_pbp_state "SUSPICIOUS" "High severity alerts detected in logs."
+    # 2. State Recalculation
+    # Check for outdated packages signal (basic check)
+    if apt list --upgradable 2>/dev/null | grep -q upgradable; then
+        pbp_emit_signal "outdated_packages" "1"
+    else
+        pbp_emit_signal "outdated_packages" "0"
     fi
+
+    recalculate_ship_state
 
     # 3. Sleep until next watch
     sleep 300 # Wait 5 minutes between full scans

@@ -10,5 +10,6 @@
   "20_container_stabilization": true,
   "40_dns_monitoring": true,
   "90_log_explorer": true,
-  "30_service_harden": true
+  "30_service_harden": true,
+  "85_mac_randomize": true
 }
