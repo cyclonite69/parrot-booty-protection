@@ -7,8 +7,8 @@ source "$(dirname "$0")/core/logger.sh"
 source "$(dirname "$0")/core/state_manager.sh"
 
 MODULES_DIR="$(dirname "$0")/modules"
-TITLE="Linux Hardening Control Dashboard"
-BACKTITLE="Parrot Booty Protection - Modular Security Framework"
+TITLE="Parrot Booty Protection: War Room"
+BACKTITLE="🏴‍☠️ Batten down the hatches! Secure your digital treasure."
 
 # --- Global Module Log ---
 # This will be set for each module's execution context
@@ -78,7 +78,7 @@ main_menu() {
         options+=("RUN_ALL" "Apply All Modules")
         options+=("VERIFY_ALL" "Verify All Modules")
         
-        choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Select a module to toggle or verify:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
+        choice=$(whiptail --title "$TITLE" --backtitle "$BACKTITLE" --menu "Choose a defense module to secure your booty:" 22 78 14 "${options[@]}" 3>&1 1>&2 2>&3)
         
         exit_code=$?
         
@@ -111,15 +111,18 @@ manage_module() {
     (
         export MODULE_RUN_LOG
         source "$module_script"
-        local -a ACTIONS=("install" "rollback" "verify" "status") # All functions that might be called
         
-        # Define functions to capture their output if not already defined
-        for action in "${ACTIONS[@]}"; do
-            if ! declare -f "$action" > /dev/null; then
-                eval "$action() { :; }" # Define a dummy function
-            fi
-        done
-        
+        # Check for optional module-specific capabilities
+        local has_task=false
+        local task_label="${MODULE_TASK_LABEL:-"Run Task"}"
+        if declare -f run_task >/dev/null; then has_task=true; fi
+
+        local has_reports=false
+        if declare -f view_reports >/dev/null; then has_reports=true; fi
+
+        local has_configure=false
+        if declare -f configure_module >/dev/null; then has_configure=true; fi
+
         local installed=false
         if is_enabled "$module_name" | grep -q "true"; then
             installed=true
@@ -128,69 +131,92 @@ manage_module() {
         local current_status="Unknown"
         if $installed; then
             if verify >> "$MODULE_RUN_LOG" 2>&1; then
-                current_status="Active & Verified"
+                current_status="Secured & Verified"
             else
-                current_status="Enabled but Verification Failed"
+                current_status="Enabled but Compromised (Failed)"
             fi
         fi
         
-        action=$(whiptail --title "$module_name" --menu "Status: $current_status\n\nChoose Action:" 18 70 5 \
-            "Enable" "Install and Enable Module" \
-            "Disable" "Rollback and Disable Module" \
-            "Verify" "Run Verification Tests" \
-            "Reinstall" "Force Re-run Install Procedure" \
-            "ViewLog" "View Last Operation Log" \
-            "Back" "Return to Main Menu" 3>&1 1>&2 2>&3)
+        # Build dynamic menu
+        menu_options=(
+            "Enable" "Batten down the hatches (Enable)"
+            "Disable" "Abandon defenses (Disable/Rollback)"
+            "Verify" "Inspect the rigging (Verify)"
+        )
+
+        if [ "$has_configure" = true ]; then
+            menu_options+=("Configure" "⚙️ Pick your defenses (Configure)")
+        fi
+        
+        if [ "$has_task" = true ]; then
+            menu_options+=("RunTask" "🦜 $task_label")
+        fi
+
+        if [ "$has_reports" = true ]; then
+            menu_options+=("ViewReports" "📜 View the Ship's Logs")
+        fi
+
+        menu_options+=(
+            "Reinstall" "Rebuild the fortress (Reinstall)"
+            "ViewLog" "Peek into the locker (View Operation Log)"
+            "Back" "Return to the Quarterdeck"
+        )
+
+        action=$(whiptail --title "$module_name" --menu "Status: $current_status\n\nWhat be your command, Captain?" 20 70 8 "${menu_options[@]}" 3>&1 1>&2 2>&3)
             
         case "$action" in
+            "Configure")
+                configure_module
+                ;;
             "Enable")
-                if ! $installed; then # Only enable if not already installed
+                if ! $installed; then 
                     if install >> "$MODULE_RUN_LOG" 2>&1; then
                         save_state "$module_name" "true"
-                        whiptail --msgbox "$module_name enabled successfully. See log for details." 8 50
+                        whiptail --msgbox "Success! The $module_name defenses be active." 8 50
                     else
-                        whiptail --msgbox "Failed to enable $module_name. See log for details." 8 50
+                        whiptail --msgbox "Blimey! Failed to enable $module_name. Check the logs in the locker." 8 50
                     fi
                 else
-                    whiptail --msgbox "$module_name is already enabled. Use Reinstall to re-run." 8 50
+                    whiptail --msgbox "Arr! $module_name be already active." 8 50
                 fi
                 ;;
             "Disable")
-                if $installed; then # Only disable if installed
-                    if whiptail --yesno "Are you sure you want to rollback $module_name?" 10 50; then
+                if $installed; then 
+                    if whiptail --yesno "Are you sure you want to scuttle the $module_name defenses?" 10 50; then
                         rollback >> "$MODULE_RUN_LOG" 2>&1
                         save_state "$module_name" "false"
-                        whiptail --msgbox "$module_name disabled. See log for details." 8 40
+                        whiptail --msgbox "$module_name defenses have been removed." 8 40
                     fi
-                else
-                    whiptail --msgbox "$module_name is not enabled." 8 50
                 fi
+                ;;
+            "RunTask")
+                log_info "Executing custom task for $module_name..."
+                run_task >> "$MODULE_RUN_LOG" 2>&1
+                whiptail --msgbox "Task Complete: $task_label\nCheck Operation Log or Reports for output." 10 50
+                ;;
+            "ViewReports")
+                view_reports
                 ;;
             "Verify")
                 if verify >> "$MODULE_RUN_LOG" 2>&1; then
-                    whiptail --msgbox "Verification PASSED. See log for details." 8 40
+                    whiptail --msgbox "Verification PASSED." 8 40
                 else
-                    whiptail --msgbox "Verification FAILED. See log for details." 8 40
+                    whiptail --msgbox "Verification FAILED." 8 40
                 fi
                 ;;
             "Reinstall")
-                if whiptail --yesno "Are you sure you want to force reinstall $module_name?" 10 50; then
-                    # Force a rollback first, then install
+                if whiptail --yesno "Force reinstall $module_name?" 10 50; then
                     rollback >> "$MODULE_RUN_LOG" 2>&1
                     install >> "$MODULE_RUN_LOG" 2>&1
-                    if [ $? -eq 0 ]; then
-                        save_state "$module_name" "true"
-                        whiptail --msgbox "Reinstallation Successful. See log for details." 8 50
-                    else
-                        whiptail --msgbox "Reinstallation Failed. See log for details." 8 50
-                    fi
+                    save_state "$module_name" "true"
+                    whiptail --msgbox "Reinstallation Complete." 8 50
                 fi
                 ;;
             "ViewLog")
-                if [ -s "$MODULE_RUN_LOG" ]; then # Check if log file exists and is not empty
+                if [ -s "$MODULE_RUN_LOG" ]; then
                     whiptail --textbox "$MODULE_RUN_LOG" 25 80
                 else
-                    whiptail --msgbox "No log content available for this run." 8 50
+                    whiptail --msgbox "No log content available." 8 50
                 fi
                 ;;
         esac

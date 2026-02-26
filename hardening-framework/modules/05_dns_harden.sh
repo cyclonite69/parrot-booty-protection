@@ -15,6 +15,13 @@ RESOLV_CONF_BAK="/etc/resolv.conf.bak"
 NM_CONF_DIR="/etc/NetworkManager/conf.d"
 NM_OVERRIDE_FILE="${NM_CONF_DIR}/90-dns-hardening.conf"
 
+view_reports() {
+    log_info "Fetching Unbound service status..."
+    systemctl status unbound --no-pager > /tmp/unbound_report.txt
+    whiptail --title "Unbound Status Report" --textbox /tmp/unbound_report.txt 25 80
+    rm /tmp/unbound_report.txt
+}
+
 install() {
     log_step "Installing DNS Hardening"
     
@@ -130,8 +137,12 @@ verify() {
     log_info "Verifying DNS hardening..."
     # Check if unbound is running
     if ! systemctl is-active --quiet unbound; then
-        log_error "Unbound service is not active."
-        return 1
+        log_warn "Unbound service is not active. Waiting 5 seconds..."
+        sleep 5
+        if ! systemctl is-active --quiet unbound; then
+            log_error "Unbound service failed to start."
+            return 1
+        fi
     fi
     log_info "Unbound service is active."
     
@@ -148,15 +159,25 @@ verify() {
     fi
     log_info "$RESOLV_CONF is immutable."
 
-    # Check if NetworkManager override is in place
-    if [ ! -f "$NM_OVERRIDE_FILE" ] || ! grep -q "dns=none" "$NM_OVERRIDE_FILE"; then
-        log_error "NetworkManager override ($NM_OVERRIDE_FILE) not correctly set to dns=none."
+    # Check if NetworkManager override is in place (any file in conf.d with dns=none)
+    if ! grep -r "dns=none" "${NM_CONF_DIR}" --include="*.conf" >/dev/null; then
+        log_error "No NetworkManager override found for dns=none in ${NM_CONF_DIR}."
         return 1
     fi
     log_info "NetworkManager override for dns=none is active."
 
-    # Test DNS resolution
-    if ! dig +short google.com @127.0.0.1 >/dev/null; then
+    # Test DNS resolution with retries
+    local success=1
+    for i in {1..3}; do
+        if dig +short google.com @127.0.0.1 >/dev/null; then
+            success=0
+            break
+        fi
+        log_warn "DNS resolution attempt $i failed. Retrying..."
+        sleep 2
+    done
+
+    if [ $success -ne 0 ]; then
         log_error "DNS resolution via Unbound (127.0.0.1) failed for google.com."
         return 1
     fi

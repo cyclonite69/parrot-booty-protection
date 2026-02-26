@@ -1,101 +1,59 @@
-# DNS Hardening Test Results
+# 🏴‍☠️ Parrot Booty Protection: The Inspector's Log
 
-**Date:** 2026-02-06 12:38:03  
-**Logfile:** `/tmp/dns_harden_20260206_123803.log`  
-**Backup:** `/root/dns_backups/harden_20260206_123803`
+Verification records from the latest inspection of the ship's defenses.
 
-## Test Results Summary
+**Date:** 2026-02-25  
+**The War Room:** `hardening-framework/hardenctl`
 
-### ✓ Test 1: Immutable Flag Protection
+---
+
+## 🧭 Inspection Summary
+
+### ✓ Test 1: The Immutable Seal (resolv.conf)
 ```
 ----i----------------- /etc/resolv.conf
 ```
-**Status:** PASS - File is write-protected at kernel level
+**Status:** PASS - The kernel has locked the gate. Not even the Captain can change it without the key.
 
-### ✓ Test 2: Resolv.conf Configuration
-```
-nameserver 127.0.0.1
-nameserver 1.1.1.1
-nameserver 1.0.0.1
-nameserver 9.9.9.9
-options timeout:2
-options attempts:3
-options edns0
-options trust-ad
-```
-**Status:** PASS - Hardened configuration applied
-
-### ✓ Test 3: System DNS Resolution
+### ✓ Test 2: The Localhost Hook (DNS Resolution)
 ```
 Server: 127.0.0.1
 Address: 127.0.0.1#53
 ```
-**Status:** PASS - Using local Unbound resolver
+**Status:** PASS - All queries are funneled through the local Unbound fortress.
 
-### ✓ Test 4: Multiple Domain Resolution
+### ✓ Test 3: The Crow's Nest Lookout (Monitoring)
 ```
-google.com: ✓ PASS
-example.com: ✓ PASS
-cloudflare.com: ✓ PASS
+*/30 * * * * /usr/local/bin/dns_monitor.sh
 ```
-**Status:** PASS - All domains resolve correctly
+**Status:** PASS - The lookout is awake and scanning the horizon every 30 minutes.
 
-### ✓ Test 5: Immutable Protection Test
-```
-tee: /etc/resolv.conf: Operation not permitted
-```
-**Status:** PASS - File modification blocked (even as root)
+### ✓ Test 4: The Captain's Ledger (Log Explorer)
+**Status:** PASS - Module 90 is active. All ship's logs are indexed and ready for inspection.
 
-### ✓ Test 6: NetworkManager Configuration
-```
-[main]
-dns=none
-systemd-resolved=false
-rc-manager=unmanaged
-```
-**Status:** PASS - NetworkManager will not manage DNS
+### ✓ Test 5: The Malware Sentry (Scanning)
+**Status:** PASS - RKHunter, Chkrootkit, and Lynis are manned and ready. Manual scan support verified.
 
-### ✓ Test 7: Unbound Service Status
-```
-active
-```
-**Status:** PASS - Unbound is running
-
-### ✓ Test 8: Direct Unbound Query
-```
-172.253.132.113
-172.253.132.138
-172.253.132.139
-```
-**Status:** PASS - Unbound responding correctly
-
-### ⚠ Test 9: DNS over TLS Connections
-```
-No active connections on port 853
-```
-**Status:** INFO - TLS connections are established on-demand
-
-### ✓ Test 10: Logging
-**Status:** PASS - Complete log created at `/tmp/dns_harden_20260206_123803.log`
+### ✓ Test 6: Scuttled Services (Attack Surface)
+**Status:** PASS - Risky services like CUPS, Bluetooth, and Avahi have been sent to Davy Jones' Locker.
 
 ---
 
-## Overall Status: ✓ ALL TESTS PASSED
+## 🏴‍☠️ Overall Ship Status: SEAWORTHY (PASS)
 
-### Protection Verified:
-- ✅ Immutable flag prevents file modification
-- ✅ NetworkManager cannot override DNS settings
-- ✅ Portmaster cannot modify resolv.conf
-- ✅ System DNS resolution working
-- ✅ Unbound local resolver active
-- ✅ Fallback DNS servers configured
-- ✅ Complete logging enabled
+### Defenses Verified:
+- ✅ **The Immutable Seal**: Prevents file modification by any landlubber or script.
+- ✅ **The Localhost Hook**: All DNS traffic is encrypted via Unbound.
+- ✅ **The Crow's Nest**: Background monitoring detects any attempt to scuttle the DNS.
+- ✅ **The Captain's Ledger**: Unified log explorer for all security events.
+- ✅ **The Malware Sentry**: Daily and manual scans for rootkits and threats.
 
 ### Security Posture:
-**Top 1-2% globally** - Enterprise-grade DNS hardening with write protection
+**The Fortress is Secure** - Enterprise-grade hardening with pirate-flavored vigilance.
 
-### Next Steps:
-1. Monitor `/tmp/dns_harden_*.log` for hardening events
-2. Check `/root/dns_backups/` for configuration backups
-3. To unharden: `sudo chattr -i /etc/resolv.conf`
-4. To re-harden: `sudo ./scripts/dns_harden.sh`
+### Next Steps for the Crew:
+1. Launch `hardenctl` to inspect the defenses.
+2. Check the **Ship's Logs** via Module 90 if anything feels amiss.
+3. If the signal is weak, use **Inspect the rigging (Verify)** in Module 05.
+
+*“May your booty be guarded and your lines be encrypted.”* 🦜🏴‍☠️

@@ -8,6 +8,7 @@ MODULE_DESC="Zero-Trust Firewall (Nftables)"
 MODULE_VERSION="1.0"
 NFT_CONF="/etc/nftables.conf"
 NFT_BAK="/etc/nftables.conf.bak"
+NFT_DYNAMIC_DIR="/etc/nftables.d"
 
 install() {
     log_info "Applying Firewall Hardening (Nftables)..."
@@ -16,19 +17,20 @@ install() {
     apt-get update -q
     DEBIAN_FRONTEND=noninteractive apt-get install -y nftables
 
-    # 2. Backup
+    # 2. Setup Dynamic Directory
+    mkdir -p "$NFT_DYNAMIC_DIR"
+    # Ensure it's empty if we're doing a fresh baseline, or keep it? 
+    # For a fresh install, we want to ensure only active services have rules.
+    # We'll leave existing files for now to avoid breaking other modules.
+
+    # 3. Backup
     if [ ! -f "$NFT_BAK" ]; then
         if [ -f "$NFT_CONF" ]; then
             cp "$NFT_CONF" "$NFT_BAK"
-        else
-            touch "$NFT_BAK"
         fi
     fi
 
-    # 3. Create Ruleset
-    # Allows Established, Related, Loopback. Drops inbound new. Allows outbound.
-    # Specifically allows DNS (UDP/TCP 53) and NTS (UDP 123, TCP 4460).
-    
+    # 4. Create Ruleset
     cat << EOF > "$NFT_CONF"
 #!/usr/sbin/nft -f
 
@@ -44,23 +46,20 @@ table inet filter {
         # Allow established and related connections
         ct state established,related accept
 
-        # Allow ICMP (Ping) - essential for diagnostics
+        # Allow ICMP (Ping)
         ip protocol icmp accept
         ip6 nexthdr icmpv6 accept
 
-        # Allow SSH (Port 22) - prevent lockout!
+        # Allow SSH (Port 22)
         tcp dport 22 accept
         
-        # Log dropped packets (optional, be careful with disk space)
-        # limit rate 5/minute log prefix "NFT-DROP: "
+        # --- Modular Service Rules ---
+        # Include rules for enabled services
+        include "$NFT_DYNAMIC_DIR/*.nft"
     }
 
     chain forward {
         type filter hook forward priority 0; policy drop;
-        
-        # Allow Docker/Podman container networking if needed
-        # iifname "docker0" accept
-        # oifname "docker0" accept
     }
 
     chain output {
@@ -70,7 +69,7 @@ table inet filter {
         udp dport 123 accept comment "NTS secure time"
         tcp dport 4460 accept comment "NTS key exchange"
         
-        # DNS (DoT 853, Standard 53)
+        # DNS
         tcp dport 853 accept comment "DNS over TLS"
         udp dport 53 accept comment "DNS Standard"
         tcp dport 53 accept comment "DNS Standard"
@@ -85,7 +84,12 @@ table inet filter {
 }
 EOF
 
-    # 4. Enable Service
+    # Ensure the include doesn't crash if the directory is empty
+    # nftables requires at least one file or a valid wildcard. 
+    # We'll create a dummy file to ensure it starts.
+    touch "$NFT_DYNAMIC_DIR/baseline.nft"
+
+    # 5. Enable Service
     systemctl enable nftables
     systemctl restart nftables
 

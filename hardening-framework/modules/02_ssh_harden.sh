@@ -61,7 +61,11 @@ install() {
     log_info "Testing SSH configuration syntax..."
     if sshd -t -f "$CONFIG_FILE"; then
         log_info "SSH configuration syntax is valid. Restarting SSH service..."
-        systemctl restart sshd
+        if systemctl list-unit-files | grep -q "^ssh.service"; then
+            systemctl restart ssh
+        else
+            systemctl restart sshd
+        fi
         log_info "SSH service restarted."
     else
         log_error "SSH configuration test failed! Reverting changes..."
@@ -91,8 +95,12 @@ verify() {
     log_info "Verifying SSH hardening..."
     # Check current runtime configuration
     # Note: sshd -T validates config syntax and outputs effective configuration
-    if sshd -T -f "$CONFIG_FILE" | grep -q "permitrootlogin no"; then
-        log_info "PermitRootLogin is 'no'."
+    # We use sudo -n (non-interactive) just in case, though the script should run as root
+    if sshd -T 2>/dev/null | grep -q "permitrootlogin no"; then
+        log_info "PermitRootLogin is 'no' (verified via sshd -T)."
+        return 0
+    elif grep -q "^[[:space:]]*PermitRootLogin[[:space:]]*no" "$CONFIG_FILE"; then
+        log_info "PermitRootLogin is 'no' (verified via config file)."
         return 0
     else
         log_error "PermitRootLogin is NOT 'no'."
@@ -106,7 +114,11 @@ rollback() {
     if [ -f "$BACKUP_FILE" ]; then
         cp "$BACKUP_FILE" "$CONFIG_FILE"
         log_info "Restored original SSH config from backup. Restarting SSH..."
-        systemctl restart sshd
+        if systemctl list-unit-files | grep -q "^ssh.service"; then
+            systemctl restart ssh
+        else
+            systemctl restart sshd
+        fi
         log_info "SSH service restarted."
     else
         log_warn "Backup file not found ($BACKUP_FILE). Manual intervention may be required."

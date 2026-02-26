@@ -16,11 +16,14 @@
 -   **Batten down the Hatches**: Interactively scan for and disable unnecessary system services to minimize attack surface.
 -   **Fix Docker DNS**: Automatically solves the common DNS resolution issue for containers when using a local DNS resolver.
 -   **Modular Framework**: A new extensible system to manage all hardening policies from a central controller (`hardenctl`).
+-   **⚙️ Custom Defenses**: New interactive submenus to pick exactly which services to scuttle and which to keep active.
+-   **🔗 Synchronized Cannons**: Service hardening now automatically manages firewall ports—disabling a service also "scuttles" its ports.
+-   **Ship's Log & Explorer**: New manual scanning and integrated report viewing for malware and DNS integrity.
 -   **Robust & Reversible**: All scripts are designed to be idempotent and include mechanisms to revert changes.
 
 ## 🛡️ Modular Hardening Framework
 
-Manage all security policies via the central controller: `sudo ./hardening-framework/hardenctl`
+Manage all security policies via the central controller (The War Room): `sudo ./hardening-framework/hardenctl`
 
 | Module | Description | Key Features |
 | :--- | :--- | :--- |
@@ -30,8 +33,11 @@ Manage all security policies via the central controller: `sudo ./hardening-frame
 | **05 DNS Hardening** | Encrypted DNS (DoT) | Local Unbound resolver, DNSSEC, Anti-leak |
 | **06 Firewall Base** | Zero-Trust nftables | Default deny inbound, stateful outbound, NTS/DoT allowed |
 | **07 IPv6 Removal** | Total IPv6 Disable | Disables IPv6 stack via GRUB kernel parameter (Reboot required) |
-| **10 Malware Detect** | Integrity Monitoring | rkhunter, chkrootkit, lynis with daily auto-scans |
+| **10 Malware Detect** | Integrity Monitoring | rkhunter, chkrootkit, lynis with **Manual Scan** support |
 | **20 Container Stab.** | Podman/Docker Fixes | Rootless support, docker-compose plugin, socket activation |
+| **30 Service Haden** | Attack Surface Reduction | Disables CUPS, Bluetooth, Avahi, and other risky daemons |
+| **40 DNS Monitoring** | The Crow's Nest | Periodic background checks for DNS integrity & DoT status |
+| **90 Log Explorer** | The Captain's Ledger | Unified interface to browse all security logs and reports |
 
 ## 🚀 Quick Start
 
@@ -41,26 +47,23 @@ Manage all security policies via the central controller: `sudo ./hardening-frame
     cd dns-hardening-parrot
     ```
 
-2.  **Use the Modular Controller (Recommended):**
+2.  **Enter the War Room (Recommended):**
     ```bash
     # Launch the central hardening control panel
     sudo ./hardening-framework/hardenctl
     ```
+    *From here, you can enable defenses, run manual scans, and view all security logs.*
 
 3.  **Or run individual hardening wizards:**
-
-    # Then, harden system services
-    sudo ./scripts/service_harden.sh
-    
+    ```bash
     # Secure your system time with NTS
     sudo ./scripts/ntp_harden.sh
 
-    # Finally, set up encrypted DNS
+    # Set up encrypted DNS
     sudo ./scripts/dns_harden.sh
-    ```
-3.  **Fix Docker DNS (if you use Docker):**
-    ```bash
-    sudo ./scripts/docker_dns_fix.sh --apply
+    
+    # Harden system services
+    sudo ./scripts/service_harden.sh
     ```
 
 ## 📜 Script Overview

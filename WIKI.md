@@ -5,7 +5,7 @@ Welcome to the **Parrot Booty Protection** Wiki. This comprehensive guide detail
 ## 🧭 Table of Contents
 
 1.  [Mission & Philosophy](#-mission--philosophy)
-2.  [The Pirate's Toolkit (Architecture)](#-the-pirates-toolkit-architecture)
+2.  [The War Room (Modular Framework)](#-the-war-room-modular-framework)
 3.  [Getting Started](#-getting-started)
 4.  [Hardening Guide](#-hardening-guide)
     *   [Step 1: Man the Cannons (Firewall)](#step-1-man-the-cannons-firewall)
@@ -13,9 +13,8 @@ Welcome to the **Parrot Booty Protection** Wiki. This comprehensive guide detail
     *   [Step 3: Secure the Lines (DNS)](#step-3-secure-the-lines-dns)
 5.  [DNS Deep Dive: Unbound & TLS](#-dns-deep-dive-unbound--tls)
 6.  [Maintenance & Monitoring](#-maintenance--monitoring)
-7.  [Container Support (Docker)](#-container-support-docker)
+7.  [The Captain's Ledger (Log Explorer)](#-the-captains-ledger-log-explorer)
 8.  [Troubleshooting](#-troubleshooting)
-9.  [Contributing & Security](#-contributing--security)
 
 ---
 
@@ -30,13 +29,15 @@ The high seas of the internet are filled with privateers and scoundrels looking 
 
 ---
 
-## ⚔️ The Pirate's Toolkit (Architecture)
+## ⚔️ The War Room (Modular Framework)
 
-The project is divided into three primary layers of defense:
+The modern way to manage your defenses is through the **Modular Hardening Framework**.
 
-1.  **Network Layer (`nftables`)**: A strict, stateful firewall that drops all incoming traffic by default and limits outgoing traffic.
-2.  **Service Layer (`systemd`)**: An interactive wizard to identify and disable "leaky" or unnecessary background services.
-3.  **DNS Layer (`unbound`)**: A local, recursive caching DNS resolver that uses **DNS-over-TLS (DoT)** and **DNSSEC** to prevent spoofing and snooping.
+### The Central Controller: `hardenctl`
+Located at `hardening-framework/hardenctl`, this TUI dashboard is your "War Room." It allows you to:
+*   **Deploy Defenses**: Enable or Disable security modules with a single command.
+*   **Manual Scans**: Trigger immediate security audits (like Malware Scans).
+*   **Report Explorer**: Browse all security logs and reports in one place.
 
 ---
 
@@ -45,36 +46,36 @@ The project is divided into three primary layers of defense:
 ### Prerequisites
 *   **OS**: Parrot OS, Debian, or any Debian-based distribution.
 *   **Privileges**: Sudo/Root access is mandatory for system-level changes.
-*   **Tools**: `git`, `bash`, `iproute2`, `dnsutils`.
+*   **Tools**: `git`, `bash`, `whiptail`, `jq`.
 
 ### Installation
 ```bash
 git clone https://github.com/cyclonite69/dns-hardening-parrot.git
 cd dns-hardening-parrot
-chmod +x scripts/*.sh
+# Launch the dashboard
+sudo ./hardening-framework/hardenctl
 ```
 
 ---
 
 ## 🛡️ Hardening Guide
 
-Follow these steps in order for maximum security.
+While the dashboard is recommended, you can still use our manual scripts.
 
 ### Step 1: Man the Cannons (Firewall)
-Run the interactive firewall builder. It will ask you which ports (SSH, HTTP, etc.) you need to keep open.
+Run the interactive firewall builder or use Module `06`.
 ```bash
 sudo ./scripts/port_harden.sh
 ```
-*   **Warning**: If you are on a remote server, ensure you allow your SSH port (usually 22) or you will be locked out!
 
 ### Step 2: Batten down the Hatches (Services)
-Audit your running services and disable the ones you don't use (e.g., Bluetooth, Print Spoolers, Avahi).
+Audit your running services and disable the ones you don't use or use Module `30`.
 ```bash
 sudo ./scripts/service_harden.sh
 ```
 
 ### Step 3: Secure the Lines (DNS)
-Install and configure Unbound for encrypted DNS.
+Install and configure Unbound for encrypted DNS or use Module `05`.
 ```bash
 sudo ./scripts/dns_harden.sh
 ```
@@ -86,48 +87,33 @@ sudo ./scripts/dns_harden.sh
 Our setup uses **Unbound** to provide:
 *   **DNS-over-TLS (DoT)**: Encrypts queries to Cloudflare (1.1.1.1) and Quad9 (9.9.9.9) on port 853.
 *   **DNSSEC**: Validates signatures on DNS records to prevent "Man-in-the-Middle" (MitM) attacks.
-*   **QNAME Minimisation**: Only sends the minimum necessary information to upstream servers.
 
 ### Verification
 To verify your DNS is truly "Hardened":
-1.  **Check TLS connections**: `sudo ss -tnp | grep :853` (Should show established connections).
-2.  **Check DNSSEC**: `dig @127.0.0.1 google.com +dnssec` (Look for the `ad` flag).
-3.  **Check Status**: `sudo ./scripts/dns_status.sh`
-
-For more details, see [**UNBOUND_TLS_STATUS.md**](UNBOUND_TLS_STATUS.md).
+1.  **Check TLS connections**: `sudo ss -tnp | grep :853`
+2.  **Check Status**: `sudo ./scripts/dns_status.sh`
 
 ---
 
-## 📡 Maintenance & Monitoring
+## 📡 Maintenance & Monitoring (The Crow's Nest)
 
-Security isn't a "set and forget" task. We provide tools for continuous monitoring.
+Module `40` (DNS Monitoring) sets up background checks that watch for:
+*   **Immutability**: If `/etc/resolv.conf` is modified, an alert is logged.
+*   **TLS Health**: If Unbound falls back to unencrypted DNS, you'll be notified.
 
-### 1. Manual Status Check
-```bash
-./scripts/dns_status.sh
-```
-
-### 2. Automated Monitoring (Cron)
-Use the installer to set up periodic checks that log changes and alert you to compromises.
-```bash
-sudo ./scripts/dns_monitoring_install.sh
-```
-
-### 3. Log Locations
-*   **Status Changes**: `/var/log/dns_hardening_monitor.log`
-*   **Security Alerts**: `/var/log/dns_hardening_alerts.log`
-
-See [**MONITORING.md**](MONITORING.md) for full details.
+### Logs & Alerts
+*   **Monitor Log**: `/var/log/dns_hardening_monitor.log`
+*   **Alerts Log**: `/var/log/dns_hardening_alerts.log`
 
 ---
 
-## 🐳 Container Support (Docker)
+## 📜 The Captain's Ledger (Log Explorer)
 
-Docker often bypasses local DNS settings. If your containers can't resolve names after hardening, run the Docker fix:
-```bash
-sudo ./scripts/docker_dns_fix.sh --apply
-```
-This updates `/etc/docker/daemon.json` to point containers to your local Unbound instance or reliable fallbacks.
+Module `90` provides the **Global Log Explorer**. Instead of hunting through `/var/log/`, use this interface to quickly inspect:
+*   Framework installation logs.
+*   DNS security history.
+*   Malware detection reports (RKHunter, Lynis).
+*   System authentication attempts.
 
 ---
 
@@ -135,27 +121,9 @@ This updates `/etc/docker/daemon.json` to point containers to your local Unbound
 
 | Issue | Potential Solution |
 | :--- | :--- |
-| **No Internet after Firewall** | Run `sudo nft flush ruleset` to reset, then re-run `port_harden.sh`. |
-| **DNS Resolution Fails** | Check Unbound: `sudo systemctl status unbound`. Check logs: `sudo journalctl -u unbound`. |
-| **Resolv.conf overwritten** | The `dns_harden.sh` script uses `chattr +i`. Check with `lsattr /etc/resolv.conf`. |
-| **SSH Locked Out** | Use a physical console or cloud provider recovery console to flush `nftables`. |
-
----
-
-## 🤝 Contributing & Security
-
-*   **Found a Bug?**: Please report it via GitHub Issues using our [**Bug Report Template**](.github/ISSUE_TEMPLATE/bug_report.md).
-*   **Want to help?**: Read our [**Contributing Guidelines**](CONTRIBUTING.md).
-*   **Security Vulnerabilities**: Please see [**SECURITY.md**](SECURITY.md) for our responsible disclosure policy.
-
----
-
-## 📚 Project Resources
-
-*   **[Changelog (CHANGELOG.md)](CHANGELOG.md)**: Track the latest updates and improvements.
-*   **[Test Results (TEST_RESULTS.md)](TEST_RESULTS.md)**: View the latest automated test performance and validation logs.
-*   **[Code of Conduct (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: Our standards for a friendly and inclusive community.
-*   **[License (LICENSE)](LICENSE)**: This project is licensed under the MIT License.
+| **No Internet after Firewall** | Run `sudo nft flush ruleset` to reset. |
+| **DNS Resolution Fails** | Check Unbound: `sudo systemctl status unbound`. |
+| **Resolv.conf overwritten** | Use `lsattr /etc/resolv.conf` to check the `i` flag. |
 
 ---
 

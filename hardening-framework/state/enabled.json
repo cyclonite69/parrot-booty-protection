@@ -1,0 +1,14 @@
+{
+  "01_sysctl_harden": true,
+  "02_ssh_harden": true,
+  "03_ipv6_disable": true,
+  "04_ntp_harden": true,
+  "05_dns_harden": true,
+  "06_firewall_harden": true,
+  "07_ipv6_grub": true,
+  "10_malware_detect": true,
+  "20_container_stabilization": true,
+  "40_dns_monitoring": true,
+  "90_log_explorer": true,
+  "30_service_harden": true
+}

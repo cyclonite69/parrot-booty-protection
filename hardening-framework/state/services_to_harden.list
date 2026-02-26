@@ -1,0 +1,8 @@
+cups.service
+avahi-daemon.service
+ModemManager.service
+geoclue.service
+whoopsie.service
+apport.service
+packagekit.service
+snapd.service

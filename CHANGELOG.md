@@ -1,54 +1,42 @@
-# Changelog - DNS Hardening Updates
+# 📜 The Ship's Manifest: Changelog
+
+Tracking all modifications to the **Parrot Booty Protection** defenses.
+
+## 2026-02-25 - Major Update: The War Room (hardenctl v2.0)
+
+### 🏴‍☠️ New Framework Features
+- **The War Room Dashboard**: Upgraded `hardenctl` with a fully themed TUI interface.
+- **Interactive Configuration**: Modules now support **"Configure"** submenus (e.g., picking which services to scuttle).
+- **Synchronized Defenses**: Service Hardening now automatically manages firewall ports (Modular Port Scuttling).
+- **Dynamic Action Support**: Modules can now offer **"Run Task"** (e.g., manual scans) and **"View Reports"** (e.g., log explorer).
+- **The Captain's Ledger**: New **Global Log Explorer** (Module 90) to browse all ship logs in one place.
+- **Parrot OS Support**: Enhanced SSH and DNS modules with distributive-aware service detection.
+
+### ⚔️ New Defense Modules
+1. **Module 30 (Service Hardening)**: Attack surface reduction. Scuttles CUPS, Avahi, and other leaky daemons with **interactive checklist selection**.
+2. **Module 40 (DNS Monitoring)**: Manned lookout (The Crow's Nest) for DNS integrity and DoT health.
+3. **Module 90 (Log Explorer)**: Centralized utility for inspecting all security records.
+
+### 🛠️ Improvements & Repairs
+- **SSH Verification**: Fixed `sshd -T` permission issues and service name conflicts (ssh vs sshd).
+- **DNS Robustness**: Added retry logic and flexible NetworkManager configuration checks to prevent false rollback alarms.
+- **Unified Theming**: All menus, logs, and documentation now follow the **Parrot Booty Protection** pirate theme.
+
+---
 
 ## 2026-02-06 - Major Update: Portmaster Protection & Monitoring
 
 ### New Features
-- **Immutable file protection** - Prevents Portmaster/NetworkManager from modifying resolv.conf
-- **Comprehensive monitoring** - Status checks, periodic monitoring, and alerts
-- **Enhanced logging** - All scripts now log to timestamped files
-
-### New Scripts
-1. `scripts/dns_harden.sh` - Hardens resolv.conf with immutable flag
-2. `scripts/dns_status.sh` - Manual status check with visual indicators
-3. `scripts/dns_monitor.sh` - Periodic monitoring (logs changes only)
-4. `scripts/dns_alert.sh` - Alert system for compromised hardening
-
-### Updated Scripts
-- `scripts/dns_restore.sh` - Now handles immutable flags automatically
+- **The Immutable Seal**: Prevents Portmaster/NetworkManager from scuttling `resolv.conf`.
+- **Lookout System**: Initial periodic monitoring and alerts for DNS integrity.
+- **The Ship's Log**: All scripts now log to timestamped files for later inspection.
 
 ### New Documentation
-- `MONITORING.md` - Complete monitoring setup guide
-- `TEST_RESULTS.md` - Initial test results and verification
-- `DNS_Hardening_Complete_Guide.md` - Moved from home directory
+- **MONITORING.md**: Guide to the Crow's Nest setup.
+- **TEST_RESULTS.md**: Initial verification of the ship's rigging.
+- **WIKI.md**: The full Pirate's Manual for system hardening.
 
-### Updated Documentation
-- `README.md` - Added hardening script, monitoring sections, updated all procedures
-- `README_SHORT.md` - Added Portmaster protection info, monitoring quick reference
-- `.gitignore` - Added new log file patterns
-
-### Protection Against
-- Portmaster DNS modifications
-- NetworkManager dynamic DNS changes
-- Any service attempting to modify resolv.conf (even as root)
-
-### Monitoring Capabilities
-- Manual status checks anytime
-- Automatic monitoring every 5 minutes (logs changes)
-- Alert system every minute (logs compromises)
-- Complete audit trail in log files
-
-### Log Files
-- `/tmp/dns_harden_TIMESTAMP.log` - Hardening operations
-- `/tmp/dns_restore_TIMESTAMP.log` - Restoration operations
-- `/var/log/dns_hardening_monitor.log` - Status change monitoring
-- `/var/log/dns_hardening_alerts.log` - Compromise alerts
-
-### Backup System
-- All operations create timestamped backups in `/root/dns_backups/`
-- Backups include resolv.conf and NetworkManager configs
-
-### Ready for Production
-✅ All scripts tested and working
-✅ Documentation complete
-✅ Logging implemented
-✅ Git ready (proper .gitignore)
+### Protection Against:
+- Portmaster DNS hijackings.
+- NetworkManager dynamic DNS overrides.
+- Any landlubber trying to modify the DNS fortress (even as root).

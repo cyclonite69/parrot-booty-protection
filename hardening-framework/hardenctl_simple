@@ -1,0 +1,23 @@
+#!/bin/bash
+# hardenctl_simple - Simplified version for troubleshooting
+
+MODULES_DIR="$(dirname "$0")/modules"
+
+# Check root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: Run as root"
+    exit 1
+fi
+
+# Build options string manually (not array) for compatibility test
+options=""
+for module in "$MODULES_DIR"/*.sh; do
+    module_name=$(basename "$module" .sh)
+    if [ "$module_name" == "template" ]; then continue; fi
+    options="$options $module_name OFF"
+done
+
+echo "Starting whiptail..."
+# Try a very simple whiptail call without complex redirections first
+whiptail --title "Test Menu" --menu "Choose:" 20 60 10 $options
+echo "Whiptail exited with code: $?"

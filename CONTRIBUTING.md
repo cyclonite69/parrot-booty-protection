@@ -1,59 +1,49 @@
-# Contributing to DNS Hardening for Parrot OS
+# 🏴‍☠️ Joining the Crew: Contributing to Parrot Booty Protection
 
-First off, thank you for considering contributing! This project thrives on community involvement, and every contribution is appreciated.
+First off, thank you for considering joining the crew! This project thrives on community involvement, and every contribution helps keep our digital treasure safe from scoundrels.
 
-This document provides guidelines for contributing to the project.
+This document provides guidelines for contributing to the fleet.
 
-## ❓ How to Report an Issue
+## ❓ Reporting an Issue: Sighting the Enemy
 
-If you find a bug, have a feature request, or want to suggest an improvement, please [**open an issue on GitHub**](https://github.com/cyclonite69/dns-hardening-parrot/issues).
+If you find a hole in the hull (bug), have a feature request (new cannons), or want to suggest an improvement, please [**open an issue on GitHub**](https://github.com/cyclonite69/dns-hardening-parrot/issues).
 
-When filing a bug report, please include the following to help us resolve it quickly:
--   A clear and descriptive title.
--   A detailed description of the problem, including the script you were running and the behavior you observed.
--   Steps to reproduce the issue.
--   The output of the script and any relevant log files.
--   Your operating system and version.
+When filing a report, please include:
+-   A clear and descriptive title (e.g., "The DNS Crow's Nest is blind in the fog").
+-   A detailed description of the problem, including the module you were running.
+-   Steps to reproduce the issue so we can see it from our deck.
+-   The output of the script and any relevant logs from the **Captain's Ledger** (Module 90).
 
-## 🚀 How to Submit a Pull Request (PR)
+## 🚀 Submitting a Pull Request (PR): Man the Cannons!
 
-We welcome pull requests for bug fixes, new features, and documentation improvements.
+We welcome PRs for bug fixes, new defense modules, and documentation improvements.
 
 1.  **Fork the repository** to your own GitHub account.
-2.  **Create a new branch** for your changes. Use a descriptive name (e.g., `feat/add-new-service-check` or `fix/docker-dns-revert-bug`).
-    ```bash
-    git checkout -b your-branch-name
-    ```
-3.  **Make your changes**. Ensure your code adheres to the style guidelines below.
-4.  **Test your changes** thoroughly.
+2.  **Create a new branch** for your changes. Use a descriptive name (e.g., `feat/add-new-defense-module` or `fix/ssh-restart-bug`).
+3.  **Make your changes**. If adding a new defense, use the `hardening-framework/modules/template.sh` as your map.
+4.  **Test your changes** thoroughly on a clean deck (Parrot OS or Debian).
 5.  **Commit your changes** with a clear and descriptive commit message.
-    ```bash
-    git commit -m "feat: Add check for XYZ service"
-    ```
-6.  **Push your branch** to your fork.
-    ```bash
-    git push origin your-branch-name
-    ```
-7.  **Open a Pull Request** from your fork to the `master` branch of this repository.
-8.  In the PR description, clearly explain the problem you are solving and the changes you have made. Link to any relevant issues.
+6.  **Push your branch** to your fork and **Open a Pull Request**.
 
-## 🎨 Code Style Guidelines
+## 🎨 The Pirate's Code: Style Guidelines
 
-To maintain a consistent and readable codebase, please follow these guidelines:
+To maintain a consistent and seaworthy codebase, please follow these rules:
 
+-   **Theming**: All user-facing strings and documentation MUST follow the **Parrot Booty Protection** pirate theme. 🦜🏴‍☠️
 -   **Shell Scripts**:
     -   All scripts must start with `set -euo pipefail` for robustness.
-    -   Follow the existing style for variable names (`UPPER_CASE` for constants, `lower_case` for locals), function names (`lower_case`), and logging/output formatting.
-    -   Add comments to explain complex or non-obvious logic.
--   **Markdown Files**:
-    -   Follow standard Markdown best practices.
-    -   Use code blocks with language identifiers for syntax highlighting.
+    -   Use the framework's `log_info`, `log_warn`, and `log_error` functions for consistent logging.
+    -   Add comments to explain complex or non-obvious rigging.
+-   **Modular Framework**:
+    -   New defenses should be added as modules in `hardening-framework/modules/`.
+    -   Implement `install()`, `rollback()`, `verify()`, and `status()`.
+    -   Optionally add `run_task()` and `view_reports()` for interactive features.
 
 ## ✅ Testing Requirements
 
--   **New Features**: Any new feature should be tested on a clean installation of Parrot OS or a similar Debian-based system. Describe the testing you have performed in your PR.
--   **Bug Fixes**: If you are fixing a bug, please provide steps to reproduce the bug and verify that your fix resolves it.
--   **Existing Functionality**: Ensure that your changes do not break any existing functionality. Run the other scripts in the repository to confirm they still work as expected.
+-   **New Defenses**: Test on a clean installation of Parrot OS or Debian.
+-   **Bug Fixes**: Provide steps to reproduce the bug and verify the fix.
+-   **Stability**: Ensure your changes don't scuttle the rest of the ship. Run `sudo ./hardening-framework/hardenctl` and verify all modules.
 
 ## 📜 Code of Conduct
 
@@ -63,4 +53,4 @@ Please note that this project is released with a [Code of Conduct](CODE_OF_CONDU
 
 If you discover a security vulnerability, please see our [Security Policy](SECURITY.md) for instructions on how to report it responsibly.
 
-Thank you again for your contribution!
+Thank you again for joining the crew! 🏴‍☠️
