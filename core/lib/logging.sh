@@ -12,8 +12,8 @@ log_level() {
     
     local log_msg="[${timestamp}] [${level}] [${caller}] ${message}"
     
-    # Try to write to log file if directory exists, otherwise just stderr
-    if [[ -d "${PBP_LOG_DIR}" ]]; then
+    # Try to write to log file if writable, otherwise just stderr
+    if [[ -w "${PBP_AUDIT_LOG}" ]] || [[ ! -e "${PBP_AUDIT_LOG}" && -w "${PBP_LOG_DIR}" ]]; then
         echo "${log_msg}" | tee -a "${PBP_AUDIT_LOG}" >&2
     else
         echo "${log_msg}" >&2

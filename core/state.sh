@@ -70,16 +70,19 @@ set_module_state() {
 }
 
 list_enabled_modules() {
-    init_state
-    jq -r 'to_entries[] | select(.value.status == "enabled") | .key' "${PBP_STATE_FILE}"
+    [[ ! -f "${PBP_STATE_FILE}" ]] && init_state
+    [[ ! -f "${PBP_STATE_FILE}" ]] && return 0
+    jq -r 'to_entries[] | select(.value.status == "enabled") | .key' "${PBP_STATE_FILE}" 2>/dev/null || true
 }
 
 list_installed_modules() {
-    init_state
-    jq -r 'to_entries[] | select(.value.status != "uninstalled") | .key' "${PBP_STATE_FILE}"
+    [[ ! -f "${PBP_STATE_FILE}" ]] && init_state
+    [[ ! -f "${PBP_STATE_FILE}" ]] && return 0
+    jq -r 'to_entries[] | select(.value.status != "uninstalled") | .key' "${PBP_STATE_FILE}" 2>/dev/null || true
 }
 
 get_all_states() {
-    init_state
+    [[ ! -f "${PBP_STATE_FILE}" ]] && init_state
+    [[ ! -f "${PBP_STATE_FILE}" ]] && echo '{}' && return
     cat "${PBP_STATE_FILE}"
 }
