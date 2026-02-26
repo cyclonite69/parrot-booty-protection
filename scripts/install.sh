@@ -51,6 +51,14 @@ chmod +x "${INSTALL_DIR}/core"/*.sh
 chmod +x "${INSTALL_DIR}/core/lib"/*.sh
 find "${INSTALL_DIR}/modules" -name "*.sh" -exec chmod +x {} \;
 
+# Make directories and binaries readable by all users
+chmod 755 "${INSTALL_DIR}"
+chmod 755 "${INSTALL_DIR}/bin"
+chmod 755 "${INSTALL_DIR}/bin"/*
+chmod 755 "${INSTALL_DIR}/core"
+chmod 755 "${INSTALL_DIR}/core/lib"
+chmod 755 "${INSTALL_DIR}/modules"
+
 chmod 750 "${STATE_DIR}"
 chmod 750 "${LOG_DIR}"
 
