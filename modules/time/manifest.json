@@ -1,0 +1,28 @@
+{
+  "name": "time",
+  "version": "1.0.0",
+  "description": "NTS-authenticated time synchronization with chrony",
+  "dependencies": [],
+  "conflicts": ["ntpd", "systemd-timesyncd"],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/chrony/chrony.conf"
+  ],
+  "config": {
+    "nts_servers": [
+      "time.cloudflare.com",
+      "nts.ntp.se",
+      "ntppool1.time.nl"
+    ],
+    "fallback_ntp": true,
+    "max_clock_skew": 1000
+  }
+}

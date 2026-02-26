@@ -1,0 +1,29 @@
+{
+  "name": "audit",
+  "version": "1.0.0",
+  "description": "System auditing with auditd for critical file monitoring",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/audit/auditd.conf",
+    "/etc/audit/rules.d/pbp.rules"
+  ],
+  "config": {
+    "watch_paths": [
+      "/etc/passwd",
+      "/etc/shadow",
+      "/etc/sudoers"
+    ],
+    "log_retention_days": 90,
+    "max_log_file_mb": 100
+  }
+}

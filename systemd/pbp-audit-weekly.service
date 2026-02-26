@@ -1,0 +1,11 @@
+[Unit]
+Description=PBP Weekly Audit Scan
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/pbp/bin/pbp scan audit
+ExecStart=/opt/pbp/bin/pbp scan rootkit
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pbp-audit

@@ -1,0 +1,29 @@
+{
+  "name": "dns",
+  "version": "1.0.0",
+  "description": "Encrypted DNS over TLS with leak prevention",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/systemd/resolved.conf",
+    "/etc/resolv.conf"
+  ],
+  "config": {
+    "provider": "cloudflare",
+    "dot_servers": [
+      "1.1.1.1#cloudflare-dns.com",
+      "1.0.0.1#cloudflare-dns.com"
+    ],
+    "dnssec": true,
+    "fallback_dns": []
+  }
+}

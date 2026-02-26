@@ -1,0 +1,176 @@
+#!/bin/bash
+# PBP TUI Dashboard
+
+PBP_ROOT="${PBP_ROOT:-/opt/pbp}"
+source "${PBP_ROOT}/core/state.sh"
+source "${PBP_ROOT}/core/health.sh"
+source "${PBP_ROOT}/core/lib/report.sh"
+
+draw_header() {
+    clear
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║           🏴‍☠️  PARROT BOOTY PROTECTION - OPS DASHBOARD              ║"
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
+    echo
+}
+
+draw_module_status() {
+    echo "┌─ MODULE STATUS ────────────────────────────────────────────────────┐"
+    echo "│"
+    
+    local modules=("time" "dns" "network" "container" "audit" "rootkit" "recon")
+    
+    for module in "${modules[@]}"; do
+        local status=$(get_module_status "$module" 2>/dev/null || echo "uninstalled")
+        local icon="○"
+        local color=""
+        
+        case "$status" in
+            enabled)
+                icon="●"
+                color="\033[32m"  # Green
+                ;;
+            installed)
+                icon="◐"
+                color="\033[33m"  # Yellow
+                ;;
+            *)
+                icon="○"
+                color="\033[90m"  # Gray
+                ;;
+        esac
+        
+        printf "│  ${color}${icon}\033[0m  %-12s %s\n" "${module}" "${status}"
+    done
+    
+    echo "│"
+    echo "└────────────────────────────────────────────────────────────────────┘"
+    echo
+}
+
+draw_system_health() {
+    echo "┌─ SYSTEM HEALTH ────────────────────────────────────────────────────┐"
+    echo "│"
+    
+    # Check system health
+    local health_status="✓ HEALTHY"
+    local health_color="\033[32m"
+    
+    if ! check_system_health &>/dev/null; then
+        health_status="✗ ISSUES DETECTED"
+        health_color="\033[31m"
+    fi
+    
+    printf "│  Overall: ${health_color}${health_status}\033[0m\n"
+    echo "│"
+    
+    # Check enabled modules
+    for module in $(list_enabled_modules 2>/dev/null); do
+        local mod_health="✓"
+        local mod_color="\033[32m"
+        
+        if ! check_module_health "$module" &>/dev/null; then
+            mod_health="✗"
+            mod_color="\033[31m"
+        fi
+        
+        printf "│  ${mod_color}${mod_health}\033[0m  %-12s\n" "${module}"
+    done
+    
+    echo "│"
+    echo "└────────────────────────────────────────────────────────────────────┘"
+    echo
+}
+
+draw_risk_summary() {
+    echo "┌─ RISK SUMMARY ─────────────────────────────────────────────────────┐"
+    echo "│"
+    
+    # Get latest report
+    local latest_report=$(list_reports 2>/dev/null | head -1)
+    
+    if [[ -n "$latest_report" ]]; then
+        local json_path="${PBP_REPORT_DIR}/json/${latest_report}.json"
+        if [[ -f "$json_path" ]]; then
+            local total_risk=$(jq -r '.data | to_entries | map(.value.risk_score // 0) | add' "$json_path" 2>/dev/null || echo "0")
+            local total_findings=$(jq -r '.data | to_entries | map(.value.findings | length) | add' "$json_path" 2>/dev/null || echo "0")
+            local timestamp=$(jq -r '.timestamp' "$json_path" 2>/dev/null | cut -d'T' -f1)
+            
+            local risk_label="SECURE"
+            local risk_color="\033[32m"
+            
+            if [[ $total_risk -gt 100 ]]; then
+                risk_label="CRITICAL"
+                risk_color="\033[31m"
+            elif [[ $total_risk -gt 50 ]]; then
+                risk_label="ELEVATED"
+                risk_color="\033[33m"
+            elif [[ $total_risk -gt 20 ]]; then
+                risk_label="MODERATE"
+                risk_color="\033[33m"
+            fi
+            
+            printf "│  Risk Score: ${risk_color}%s (%s)\033[0m\n" "$total_risk" "$risk_label"
+            printf "│  Findings: %s\n" "$total_findings"
+            printf "│  Last Scan: %s\n" "$timestamp"
+        else
+            echo "│  No scan data available"
+        fi
+    else
+        echo "│  No reports found - run 'pbp scan'"
+    fi
+    
+    echo "│"
+    echo "└────────────────────────────────────────────────────────────────────┘"
+    echo
+}
+
+draw_quick_actions() {
+    echo "┌─ QUICK ACTIONS ────────────────────────────────────────────────────┐"
+    echo "│"
+    echo "│  [s] Run Security Scan"
+    echo "│  [r] View Reports"
+    echo "│  [h] Health Check"
+    echo "│  [q] Quit"
+    echo "│"
+    echo "└────────────────────────────────────────────────────────────────────┘"
+}
+
+dashboard_loop() {
+    while true; do
+        draw_header
+        draw_module_status
+        draw_system_health
+        draw_risk_summary
+        draw_quick_actions
+        
+        echo
+        read -n 1 -s -p "Select action: " action
+        echo
+        
+        case "$action" in
+            s|S)
+                echo "Running security scan..."
+                "${PBP_ROOT}/bin/pbp" scan
+                read -p "Press Enter to continue..."
+                ;;
+            r|R)
+                source "${PBP_ROOT}/core/lib/report_viewer.sh"
+                list_reports_interactive
+                read -p "Press Enter to continue..."
+                ;;
+            h|H)
+                echo "Running health checks..."
+                "${PBP_ROOT}/bin/pbp" health
+                read -p "Press Enter to continue..."
+                ;;
+            q|Q)
+                echo "Exiting dashboard..."
+                exit 0
+                ;;
+        esac
+    done
+}
+
+# Run dashboard
+dashboard_loop

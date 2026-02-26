@@ -1,0 +1,11 @@
+[Unit]
+Description=PBP Weekly Audit Timer
+Requires=pbp-audit-weekly.service
+
+[Timer]
+OnCalendar=weekly
+RandomizedDelaySec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

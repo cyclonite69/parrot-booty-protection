@@ -1,0 +1,22 @@
+{
+  "name": "recon",
+  "version": "1.0.0",
+  "description": "Network exposure validation and port scanning with nmap",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [],
+  "config": {
+    "scan_profile": "quick",
+    "target": "localhost",
+    "service_detection": true
+  }
+}

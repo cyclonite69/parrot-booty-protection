@@ -1,0 +1,3 @@
+#!/bin/bash
+# PBP Report CLI Wrapper
+exec bash /opt/pbp/reporting/engine.sh "$@"

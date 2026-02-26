@@ -1,0 +1,25 @@
+{
+  "name": "container",
+  "version": "1.0.0",
+  "description": "Podman rootless container security hardening",
+  "dependencies": [],
+  "conflicts": ["docker", "docker.io"],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/containers/policy.json"
+  ],
+  "config": {
+    "rootless": true,
+    "seccomp": true,
+    "no_new_privileges": true,
+    "read_only_root": false
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "rootkit",
+  "version": "1.0.0",
+  "description": "Rootkit and malware detection with rkhunter and chkrootkit",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [],
+  "config": {
+    "scanners": ["rkhunter", "chkrootkit"],
+    "scan_depth": "full",
+    "auto_update": true
+  }
+}

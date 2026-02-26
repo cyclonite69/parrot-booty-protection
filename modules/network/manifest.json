@@ -1,0 +1,25 @@
+{
+  "name": "network",
+  "version": "1.0.0",
+  "description": "nftables-based stateful firewall with egress control",
+  "dependencies": [],
+  "conflicts": ["ufw", "iptables-persistent", "firewalld"],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/nftables.conf"
+  ],
+  "config": {
+    "ipv6_mode": "harden",
+    "egress_policy": "permissive",
+    "allow_ports": [22, 80, 443],
+    "log_dropped": true
+  }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=PBP Daily Security Scan Timer
+Requires=pbp-scan-daily.service
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

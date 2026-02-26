@@ -1,0 +1,256 @@
+#!/bin/bash
+# PBP Main CLI Entrypoint
+
+set -euo pipefail
+
+PBP_ROOT="${PBP_ROOT:-/opt/pbp}"
+export PBP_ROOT
+
+VERSION="1.0.0"
+
+show_usage() {
+    cat << 'EOF'
+PBP - Parrot Booty Protection
+Security Operations Platform
+
+USAGE:
+    pbp <command> [options]
+
+COMMANDS:
+    status              Show system security status
+    enable <module>     Enable a security module
+    disable <module>    Disable a security module
+    scan [module]       Run security scan (all or specific module)
+    report [id]         View security report
+    reports             List all reports
+    compare <id1> <id2> Compare two reports
+    bughunt             Run comprehensive system validation
+    dashboard           Launch interactive TUI dashboard
+    rollback <module>   Revert module to previous state
+    health              Run system health checks
+    list                List available modules
+    version             Show version information
+
+EXAMPLES:
+    pbp status
+    pbp enable network
+    pbp scan
+    pbp rollback dns
+
+For detailed help: pbp <command> --help
+EOF
+}
+
+cmd_status() {
+    source "${PBP_ROOT}/core/engine.sh"
+    status_all
+}
+
+cmd_enable() {
+    local module="${1:-}"
+    if [[ -z "$module" ]]; then
+        echo "Error: Module name required"
+        echo "Usage: pbp enable <module>"
+        return 1
+    fi
+    
+    source "${PBP_ROOT}/core/engine.sh"
+    module_enable "$module"
+}
+
+cmd_disable() {
+    local module="${1:-}"
+    if [[ -z "$module" ]]; then
+        echo "Error: Module name required"
+        echo "Usage: pbp disable <module>"
+        return 1
+    fi
+    
+    source "${PBP_ROOT}/core/engine.sh"
+    module_disable "$module"
+}
+
+cmd_scan() {
+    local module="${1:-}"
+    
+    source "${PBP_ROOT}/core/engine.sh"
+    
+    if [[ -z "$module" ]]; then
+        scan_all
+    else
+        module_scan "$module"
+    fi
+}
+
+cmd_rollback() {
+    local module="${1:-}"
+    local backup_id="${2:-}"
+    
+    if [[ -z "$module" ]]; then
+        echo "Error: Module name required"
+        echo "Usage: pbp rollback <module> [backup_id]"
+        return 1
+    fi
+    
+    source "${PBP_ROOT}/core/rollback.sh"
+    rollback_module "$module" "$backup_id"
+}
+
+cmd_health() {
+    source "${PBP_ROOT}/core/health.sh"
+    
+    echo "=== System Health Check ==="
+    if check_system_health; then
+        echo "✓ System health: OK"
+    else
+        echo "✗ System health: Issues detected"
+    fi
+    
+    echo
+    echo "=== Module Health ==="
+    source "${PBP_ROOT}/core/state.sh"
+    for module in $(list_enabled_modules); do
+        if check_module_health "$module"; then
+            echo "✓ ${module}: OK"
+        else
+            echo "✗ ${module}: FAILED"
+        fi
+    done
+}
+
+cmd_list() {
+    source "${PBP_ROOT}/core/registry.sh"
+    source "${PBP_ROOT}/core/state.sh"
+    
+    echo "=== Available Modules ==="
+    for module in $(list_available_modules); do
+        local status=$(get_module_status "$module")
+        local manifest=$(get_module_manifest "$module")
+        local desc=$(echo "$manifest" | jq -r '.description')
+        
+        case "$status" in
+            enabled)
+                echo "✓ ${module} - ${desc}"
+                ;;
+            installed)
+                echo "○ ${module} - ${desc}"
+                ;;
+            *)
+                echo "  ${module} - ${desc}"
+                ;;
+        esac
+    done
+}
+
+cmd_version() {
+    echo "PBP version ${VERSION}"
+}
+
+cmd_report() {
+    local report_id="${1:-}"
+    local format="${2:-summary}"
+    
+    source "${PBP_ROOT}/core/lib/report_viewer.sh"
+    
+    if [[ -z "$report_id" ]]; then
+        list_reports_interactive
+    else
+        view_report "$report_id" "$format"
+    fi
+}
+
+cmd_reports() {
+    source "${PBP_ROOT}/core/lib/report_viewer.sh"
+    list_reports_interactive
+}
+
+cmd_compare() {
+    local report1="${1:-}"
+    local report2="${2:-}"
+    
+    if [[ -z "$report1" || -z "$report2" ]]; then
+        echo "Error: Two report IDs required"
+        echo "Usage: pbp compare <report_id1> <report_id2>"
+        return 1
+    fi
+    
+    source "${PBP_ROOT}/core/lib/report_viewer.sh"
+    compare_reports "$report1" "$report2"
+}
+
+cmd_dashboard() {
+    exec "${PBP_ROOT}/bin/pbp-dashboard"
+}
+
+cmd_bughunt() {
+    if [[ $EUID -ne 0 ]]; then
+        echo "Error: Bug hunt requires root privileges"
+        return 1
+    fi
+    
+    exec bash "${PBP_ROOT}/bughunt/bughunt.sh"
+}
+
+main() {
+    local command="${1:-}"
+    
+    if [[ -z "$command" ]]; then
+        show_usage
+        return 0
+    fi
+    
+    shift
+    
+    case "$command" in
+        status)
+            cmd_status "$@"
+            ;;
+        enable)
+            cmd_enable "$@"
+            ;;
+        disable)
+            cmd_disable "$@"
+            ;;
+        scan)
+            cmd_scan "$@"
+            ;;
+        report)
+            cmd_report "$@"
+            ;;
+        reports)
+            cmd_reports "$@"
+            ;;
+        compare)
+            cmd_compare "$@"
+            ;;
+        dashboard)
+            cmd_dashboard "$@"
+            ;;
+        bughunt)
+            cmd_bughunt "$@"
+            ;;
+        rollback)
+            cmd_rollback "$@"
+            ;;
+        health)
+            cmd_health "$@"
+            ;;
+        list)
+            cmd_list "$@"
+            ;;
+        version|--version|-v)
+            cmd_version
+            ;;
+        help|--help|-h)
+            show_usage
+            ;;
+        *)
+            echo "Error: Unknown command: $command"
+            echo
+            show_usage
+            return 1
+            ;;
+    esac
+}
+
+main "$@"

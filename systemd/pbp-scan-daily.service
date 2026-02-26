@@ -1,0 +1,10 @@
+[Unit]
+Description=PBP Daily Security Scan
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/pbp/bin/pbp scan
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pbp-scan
