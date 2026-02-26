@@ -35,8 +35,13 @@ Manage all security policies via the central controller (The War Room): `sudo ./
 | **07 IPv6 Removal** | Total IPv6 Disable | Disables IPv6 stack via GRUB kernel parameter (Reboot required) |
 | **10 Malware Detect** | Integrity Monitoring | rkhunter, chkrootkit, lynis with **Manual Scan** support |
 | **20 Container Stab.** | Podman/Docker Fixes | Rootless support, docker-compose plugin, socket activation |
-| **30 Service Haden** | Attack Surface Reduction | Disables CUPS, Bluetooth, Avahi, and other risky daemons |
+| **30 Service Haden** | Attack Surface Reduction | Disables CUPS, Avahi, and other risky daemons |
 | **40 DNS Monitoring** | The Crow's Nest | Periodic background checks for DNS integrity & DoT status |
+| **50 USB Guard** | Boarding Party Defense | Whitelist-based protection against malicious USB devices |
+| **60 System Audit** | Master-at-Arms' Ledger | Detailed auditing of critical file changes (auditd) |
+| **70 Mount Harden** | Reinforcing the Hull | Sets noexec/nosuid/nodev on temp partitions |
+| **80 Intrusion Prev.** | The Iron Brig | Fail2Ban integration with nftables for failed logins |
+| **85 MAC Privacy** | The Ghost Ship | MAC address randomization for Wi-Fi/Ethernet |
 | **90 Log Explorer** | The Captain's Ledger | Unified interface to browse all security logs and reports |
 
 ## 🚀 Quick Start

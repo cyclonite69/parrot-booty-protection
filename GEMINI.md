@@ -74,6 +74,11 @@ The project includes an extensible framework for general system hardening.
 - **20 Container Stabilization:** Fixes Podman/Docker CLI, enables rootless containers.
 - **30 Service Hardening:** Attack surface reduction by disabling risky/unused daemons (CUPS, Avahi, etc.). Includes **interactive selection** of services and automatic **firewall port scuttling**.
 - **40 DNS Monitoring:** Background monitoring of DNS immutability and DoT health (The Crow's Nest).
+- **50 USB Guard:** Whitelist-based protection against malicious USB devices (The Boarding Party Defense).
+- **60 System Audit:** Detailed auditing of critical system calls and file changes (The Master-at-Arms).
+- **70 Mount Hardening:** Sets `noexec`, `nosuid`, and `nodev` flags on temporary partitions (Reinforcing the Hull).
+- **80 Intrusion Prevention:** Fail2Ban integration with nftables to ban scoundrels with failed logins (The Iron Brig).
+- **85 MAC Randomization:** Randomizes MAC addresses for network privacy (The Ghost Ship).
 - **90 Log Explorer:** A centralized utility to browse all ship logs and security reports (The Captain's Ledger).
 
 ### Adding Modules
