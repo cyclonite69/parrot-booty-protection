@@ -1,0 +1,12 @@
+[Unit]
+Description=PBP Integrity Watcher
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/pbp/core/integrity.sh watch
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

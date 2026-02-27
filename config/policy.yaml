@@ -1,0 +1,56 @@
+# PBP Operator Policy - Single Source of Truth
+# All modules MUST respect this policy
+
+dns_authority: unbound
+allow_auto_changes: false
+require_operator_confirmation: true
+monitor_integrity: true
+alert_on_change: true
+
+# DNS Configuration
+dns:
+  resolver: unbound
+  upstream_protocol: doh
+  upstream_servers:
+    - https://1.1.1.1/dns-query
+    - https://1.0.0.1/dns-query
+  local_bind: 127.0.0.1
+  dnssec: true
+  
+# Forbidden DNS Managers
+dns_blocklist:
+  - NetworkManager
+  - resolvconf
+  - systemd-resolved
+  - dhclient
+  - container-runtimes
+
+# Protected Files
+protected_files:
+  - /etc/resolv.conf
+  - /etc/unbound/unbound.conf
+  - /etc/NetworkManager/NetworkManager.conf
+  - /etc/systemd/resolved.conf
+
+# Alert Configuration
+alerts:
+  enabled: true
+  methods:
+    - terminal
+    - log
+    - report
+  # Future: email, webhook
+
+# Operator Approval Gates
+approval_required:
+  - dns_change
+  - network_change
+  - firewall_change
+  - boot_parameters
+  - security_services
+
+# Enforcement
+enforcement:
+  auto_restore: true
+  immutable_resolv: true
+  block_dhcp_dns: true

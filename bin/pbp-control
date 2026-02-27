@@ -1,0 +1,60 @@
+#!/bin/bash
+# PBP Control Plane - Local web dashboard
+
+set -euo pipefail
+
+PORT=7777
+WEB_ROOT="/opt/pbp/ui"
+PID_FILE="/var/run/pbp-control.pid"
+
+start_server() {
+    if [[ -f "$PID_FILE" ]]; then
+        echo "Control plane already running (PID: $(cat "$PID_FILE"))"
+        exit 1
+    fi
+    
+    echo "Starting PBP Control Plane on http://localhost:$PORT"
+    
+    cd "$WEB_ROOT"
+    python3 -m http.server $PORT --bind 127.0.0.1 &
+    echo $! > "$PID_FILE"
+    
+    echo "✅ Control plane started"
+    echo "   Access: http://localhost:$PORT"
+}
+
+stop_server() {
+    if [[ ! -f "$PID_FILE" ]]; then
+        echo "Control plane not running"
+        exit 1
+    fi
+    
+    kill $(cat "$PID_FILE") 2>/dev/null || true
+    rm -f "$PID_FILE"
+    echo "✅ Control plane stopped"
+}
+
+status_server() {
+    if [[ -f "$PID_FILE" ]] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
+        echo "✅ Control plane running (PID: $(cat "$PID_FILE"))"
+        echo "   Access: http://localhost:$PORT"
+    else
+        echo "❌ Control plane not running"
+        rm -f "$PID_FILE"
+    fi
+}
+
+case "${1:-}" in
+    start) start_server ;;
+    stop) stop_server ;;
+    status) status_server ;;
+    restart)
+        stop_server
+        sleep 1
+        start_server
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|restart}"
+        exit 1
+        ;;
+esac

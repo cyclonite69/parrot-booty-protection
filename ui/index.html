@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PBP Control Plane</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: #0a0e27; 
+            color: #00ff41; 
+            padding: 20px;
+        }
+        .header {
+            border: 2px solid #00ff41;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { color: #888; }
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px; 
+        }
+        .card {
+            border: 1px solid #00ff41;
+            padding: 20px;
+            background: #0f1419;
+        }
+        .card h2 { 
+            color: #00ff41; 
+            margin-bottom: 15px; 
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 10px;
+        }
+        .status { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 8px 0;
+            border-bottom: 1px solid #1a1f2e;
+        }
+        .status:last-child { border-bottom: none; }
+        .enabled { color: #00ff41; }
+        .disabled { color: #ff4444; }
+        .warning { color: #ffaa00; }
+        button {
+            background: #00ff41;
+            color: #0a0e27;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        button:hover { background: #00cc33; }
+        button.danger { background: #ff4444; }
+        button.danger:hover { background: #cc0000; }
+        .alert {
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #cc0000;
+        }
+        .log {
+            background: #000;
+            padding: 15px;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #00ff41;
+        }
+        .actions { margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏴‍☠️ PARROT BOOTY PROTECTION</h1>
+        <p>Security Control Plane v2.0</p>
+        <p style="color: #00ff41; margin-top: 10px;">Operator Authority Enforced</p>
+    </div>
+
+    <div class="grid">
+        <!-- DNS Guard -->
+        <div class="card">
+            <h2>🔒 DNS Guard</h2>
+            <div class="status">
+                <span>Authority:</span>
+                <span class="enabled">Unbound</span>
+            </div>
+            <div class="status">
+                <span>Protocol:</span>
+                <span class="enabled">DoH/DoT</span>
+            </div>
+            <div class="status">
+                <span>Status:</span>
+                <span class="enabled" id="dns-status">ENABLED</span>
+            </div>
+            <div class="status">
+                <span>Resolv Lock:</span>
+                <span class="enabled">IMMUTABLE</span>
+            </div>
+            <div class="actions">
+                <button onclick="toggleModule('dns')">Toggle</button>
+                <button onclick="scanModule('dns')">Scan</button>
+            </div>
+        </div>
+
+        <!-- Network Guard -->
+        <div class="card">
+            <h2>🛡️ Network Guard</h2>
+            <div class="status">
+                <span>Firewall:</span>
+                <span class="enabled">nftables</span>
+            </div>
+            <div class="status">
+                <span>Policy:</span>
+                <span class="enabled">Default Deny</span>
+            </div>
+            <div class="status">
+                <span>Status:</span>
+                <span class="disabled" id="network-status">DISABLED</span>
+            </div>
+            <div class="actions">
+                <button onclick="toggleModule('network')">Toggle</button>
+                <button onclick="scanModule('network')">Scan</button>
+            </div>
+        </div>
+
+        <!-- Rootkit Guard -->
+        <div class="card">
+            <h2>🔍 Rootkit Guard</h2>
+            <div class="status">
+                <span>Scanner:</span>
+                <span>rkhunter + chkrootkit</span>
+            </div>
+            <div class="status">
+                <span>Last Scan:</span>
+                <span id="rootkit-scan">Never</span>
+            </div>
+            <div class="status">
+                <span>Status:</span>
+                <span class="disabled" id="rootkit-status">DISABLED</span>
+            </div>
+            <div class="actions">
+                <button onclick="toggleModule('rootkit')">Toggle</button>
+                <button onclick="scanModule('rootkit')">Scan Now</button>
+            </div>
+        </div>
+
+        <!-- Integrity Monitor -->
+        <div class="card">
+            <h2>📋 Integrity Monitor</h2>
+            <div class="status">
+                <span>Protected Files:</span>
+                <span class="enabled">4</span>
+            </div>
+            <div class="status">
+                <span>Violations:</span>
+                <span class="warning" id="violations">0</span>
+            </div>
+            <div class="status">
+                <span>Auto-Restore:</span>
+                <span class="enabled">ENABLED</span>
+            </div>
+            <div class="actions">
+                <button onclick="checkIntegrity()">Check Now</button>
+                <button onclick="viewAlerts()">View Alerts</button>
+            </div>
+        </div>
+
+        <!-- Scan Engine -->
+        <div class="card">
+            <h2>⚡ Scan Engine</h2>
+            <div class="status">
+                <span>Last Full Scan:</span>
+                <span id="last-scan">Never</span>
+            </div>
+            <div class="status">
+                <span>Risk Score:</span>
+                <span class="warning" id="risk-score">--</span>
+            </div>
+            <div class="status">
+                <span>Findings:</span>
+                <span id="findings">--</span>
+            </div>
+            <div class="actions">
+                <button onclick="runFullScan()">Full Scan</button>
+                <button onclick="runBugHunt()">Bug Hunt</button>
+            </div>
+        </div>
+
+        <!-- Reports -->
+        <div class="card">
+            <h2>📊 Reports</h2>
+            <div class="status">
+                <span>Total Reports:</span>
+                <span id="report-count">0</span>
+            </div>
+            <div class="status">
+                <span>Latest:</span>
+                <span id="latest-report">None</span>
+            </div>
+            <div class="actions">
+                <button onclick="viewReports()">View All</button>
+                <button onclick="downloadLatest()">Download PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+        <h2>📡 System Log</h2>
+        <div class="log" id="system-log">
+            [2026-02-26 14:12:17] PBP Control Plane initialized<br>
+            [2026-02-26 14:12:17] Policy loaded: /opt/pbp/config/policy.yaml<br>
+            [2026-02-26 14:12:17] DNS Authority: Unbound<br>
+            [2026-02-26 14:12:17] Operator approval required: YES<br>
+            [2026-02-26 14:12:17] Auto-changes allowed: NO<br>
+            [2026-02-26 14:12:17] Integrity monitoring: ACTIVE<br>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('system-log');
+            const timestamp = new Date().toISOString().replace('T', ' ').substr(0, 19);
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function toggleModule(module) {
+            log(`⚠️  Operator approval required for: ${module} toggle`);
+            alert(`This action requires backend integration.\n\nIn production, this will:\n1. Request operator approval\n2. Execute: pbp enable/disable ${module}\n3. Update status in real-time`);
+        }
+
+        function scanModule(module) {
+            log(`🔍 Scanning ${module} module...`);
+            alert(`Scan initiated for ${module}\n\nBackend will execute: pbp scan ${module}`);
+        }
+
+        function checkIntegrity() {
+            log('📋 Running integrity check...');
+            alert('Integrity check initiated\n\nBackend will execute: /opt/pbp/core/integrity.sh check');
+        }
+
+        function viewAlerts() {
+            log('📢 Opening alerts log...');
+            alert('View: /var/log/pbp/integrity-alerts.log');
+        }
+
+        function runFullScan() {
+            log('⚡ Starting full system scan...');
+            alert('Full scan initiated\n\nBackend will execute: pbp scan');
+        }
+
+        function runBugHunt() {
+            log('🐛 Starting bug hunt mode...');
+            alert('Bug hunt initiated\n\nBackend will execute: pbp bughunt');
+        }
+
+        function viewReports() {
+            log('📊 Loading reports...');
+            alert('View: /var/log/pbp/reports/');
+        }
+
+        function downloadLatest() {
+            log('📥 Downloading latest report...');
+            alert('Latest report download\n\nBackend will serve latest PDF');
+        }
+
+        // Simulate status updates
+        setInterval(() => {
+            const now = new Date().toLocaleString();
+            document.getElementById('last-scan').textContent = now;
+        }, 60000);
+    </script>
+</body>
+</html>

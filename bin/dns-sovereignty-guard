@@ -1,0 +1,173 @@
+#!/bin/bash
+# DNS Sovereignty Guard - Continuous monitoring daemon
+# Observes DNS configuration, alerts on violations, never auto-fixes
+
+set -euo pipefail
+
+RESOLV_CONF="/etc/resolv.conf"
+STATE_DIR="/var/lib/pbp/dns-guard"
+LOG_FILE="/var/log/pbp/dns-guard.log"
+ALERT_LOG="/var/log/pbp/dns-alerts.log"
+CHECK_INTERVAL=30
+
+mkdir -p "$STATE_DIR" "$(dirname "$LOG_FILE")" "$(dirname "$ALERT_LOG")"
+
+log() {
+    echo "[$(date -Iseconds)] $*" | tee -a "$LOG_FILE"
+}
+
+alert() {
+    local severity="$1"
+    local message="$2"
+    local timestamp=$(date -Iseconds)
+    
+    # Terminal banner
+    if [[ -t 1 ]]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  PBP DNS SOVEREIGNTY ALERT [$severity]"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "Time: $timestamp"
+        echo "Issue: $message"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    fi
+    
+    # Log entry
+    echo "[$timestamp] [$severity] $message" >> "$ALERT_LOG"
+    
+    # JSON event
+    cat >> "$STATE_DIR/events.jsonl" << EOF
+{"timestamp":"$timestamp","severity":"$severity","message":"$message","type":"dns_violation"}
+EOF
+    
+    # Email (if configured)
+    if [[ -f "$STATE_DIR/email.conf" ]]; then
+        source "$STATE_DIR/email.conf"
+        if [[ -n "${EMAIL_TO:-}" ]]; then
+            echo "$message" | mail -s "PBP DNS Alert: $severity" "$EMAIL_TO" 2>/dev/null || true
+        fi
+    fi
+}
+
+init_baseline() {
+    log "Initializing DNS baseline"
+    
+    # Store resolv.conf hash
+    sha256sum "$RESOLV_CONF" > "$STATE_DIR/resolv.hash"
+    
+    # Store immutable flag state
+    lsattr "$RESOLV_CONF" 2>/dev/null | grep -o "^....i" > "$STATE_DIR/immutable.state" || echo "none" > "$STATE_DIR/immutable.state"
+    
+    # Store expected DNS
+    grep nameserver "$RESOLV_CONF" | head -1 | awk '{print $2}' > "$STATE_DIR/expected_dns.txt"
+    
+    log "Baseline created"
+}
+
+check_resolv_conf() {
+    local current_hash=$(sha256sum "$RESOLV_CONF" 2>/dev/null | awk '{print $1}')
+    local baseline_hash=$(cat "$STATE_DIR/resolv.hash" 2>/dev/null | awk '{print $1}')
+    
+    if [[ "$current_hash" != "$baseline_hash" ]]; then
+        alert "CRITICAL" "resolv.conf has been modified"
+        return 1
+    fi
+    return 0
+}
+
+check_immutable() {
+    local current=$(lsattr "$RESOLV_CONF" 2>/dev/null | grep -o "^....i" || echo "none")
+    local baseline=$(cat "$STATE_DIR/immutable.state" 2>/dev/null || echo "none")
+    
+    if [[ "$current" != "$baseline" ]]; then
+        if [[ "$current" == "none" ]]; then
+            alert "CRITICAL" "Immutable flag removed from resolv.conf"
+        else
+            alert "INFO" "Immutable flag added to resolv.conf"
+        fi
+        return 1
+    fi
+    return 0
+}
+
+check_dns_server() {
+    local expected=$(cat "$STATE_DIR/expected_dns.txt" 2>/dev/null || echo "127.0.0.1")
+    local current=$(grep nameserver "$RESOLV_CONF" 2>/dev/null | head -1 | awk '{print $2}')
+    
+    if [[ "$current" != "$expected" ]]; then
+        alert "CRITICAL" "DNS server changed from $expected to $current"
+        return 1
+    fi
+    return 0
+}
+
+check_port_53() {
+    local owner=$(ss -tlnp 2>/dev/null | grep ":53 " | grep -o "unbound" || echo "none")
+    
+    if [[ "$owner" != "unbound" ]]; then
+        alert "CRITICAL" "Port 53 not owned by unbound (owner: $owner)"
+        return 1
+    fi
+    return 0
+}
+
+check_nm_dns() {
+    if ! grep -q "dns=none" /etc/NetworkManager/conf.d/90-dns-hardening.conf 2>/dev/null; then
+        alert "HIGH" "NetworkManager DNS management is enabled"
+        return 1
+    fi
+    return 0
+}
+
+check_upstream() {
+    # Check if unbound config changed
+    local unbound_conf="/etc/unbound/unbound.conf"
+    if [[ -f "$STATE_DIR/unbound.hash" ]]; then
+        local current_hash=$(sha256sum "$unbound_conf" 2>/dev/null | awk '{print $1}')
+        local baseline_hash=$(cat "$STATE_DIR/unbound.hash" 2>/dev/null | awk '{print $1}')
+        
+        if [[ "$current_hash" != "$baseline_hash" ]]; then
+            alert "HIGH" "Unbound configuration has been modified"
+            return 1
+        fi
+    else
+        sha256sum "$unbound_conf" > "$STATE_DIR/unbound.hash" 2>/dev/null || true
+    fi
+    return 0
+}
+
+monitor_loop() {
+    log "DNS Sovereignty Guard started (check interval: ${CHECK_INTERVAL}s)"
+    
+    # Initialize baseline if not exists
+    if [[ ! -f "$STATE_DIR/resolv.hash" ]]; then
+        init_baseline
+    fi
+    
+    while true; do
+        check_resolv_conf || true
+        check_immutable || true
+        check_dns_server || true
+        check_port_53 || true
+        check_nm_dns || true
+        check_upstream || true
+        
+        sleep "$CHECK_INTERVAL"
+    done
+}
+
+case "${1:-monitor}" in
+    monitor)
+        monitor_loop
+        ;;
+    init)
+        init_baseline
+        ;;
+    check)
+        check_resolv_conf && check_immutable && check_dns_server && check_port_53 && check_nm_dns && check_upstream
+        echo "✅ All DNS sovereignty checks passed"
+        ;;
+    *)
+        echo "Usage: $0 {monitor|init|check}"
+        exit 1
+        ;;
+esac

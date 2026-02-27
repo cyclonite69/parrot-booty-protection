@@ -1,17 +1,25 @@
 #!/bin/bash
+# DNS Guard - Disable and restore
+
 set -euo pipefail
 
-echo "Disabling DNS over TLS..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../../core/policy.sh"
 
-# Restore default configuration
-cat > /etc/systemd/resolved.conf << 'EOF'
-[Resolve]
-#DNS=
-#FallbackDNS=
-#DNSOverTLS=no
-#DNSSEC=allow-downgrade
-EOF
+echo "Disabling DNS Guard..."
 
-systemctl restart systemd-resolved
+# Request approval
+request_approval "dns_disable" "Disable Unbound DNS enforcement" || exit 1
 
-echo "DNS module disabled"
+# Unlock resolv.conf
+chattr -i /etc/resolv.conf 2>/dev/null || true
+
+# Stop Unbound
+systemctl stop unbound
+systemctl disable unbound
+
+# Remove NetworkManager override
+rm -f /etc/NetworkManager/conf.d/pbp-no-dns.conf
+systemctl restart NetworkManager 2>/dev/null || true
+
+echo "✅ DNS Guard disabled"

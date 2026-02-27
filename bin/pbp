@@ -26,6 +26,9 @@ COMMANDS:
     compare <id1> <id2> Compare two reports
     bughunt             Run comprehensive system validation
     dashboard           Launch interactive TUI dashboard
+    control             Start/stop web control plane
+    integrity           Check file integrity
+    alerts              View security alerts
     rollback <module>   Revert module to previous state
     health              Run system health checks
     list                List available modules
@@ -94,6 +97,24 @@ cmd_rollback() {
     
     source "${PBP_ROOT}/core/rollback.sh"
     rollback_module "$module" "$backup_id"
+}
+
+cmd_control() {
+    local action="${1:-status}"
+    "${PBP_ROOT}/bin/pbp-control" "$action"
+}
+
+cmd_integrity() {
+    "${PBP_ROOT}/core/integrity.sh" check
+}
+
+cmd_alerts() {
+    local alert_log="/var/log/pbp/integrity-alerts.log"
+    if [[ -f "$alert_log" ]]; then
+        tail -50 "$alert_log"
+    else
+        echo "No alerts found"
+    fi
 }
 
 cmd_health() {
@@ -225,6 +246,15 @@ main() {
             ;;
         dashboard)
             cmd_dashboard "$@"
+            ;;
+        control)
+            cmd_control "$@"
+            ;;
+        integrity)
+            cmd_integrity "$@"
+            ;;
+        alerts)
+            cmd_alerts "$@"
             ;;
         bughunt)
             cmd_bughunt "$@"

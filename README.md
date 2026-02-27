@@ -1,28 +1,30 @@
 # 🏴‍☠️ Parrot Booty Protection (PBP)
 
-### Enterprise-Grade Linux Security Hardening & Monitoring Platform
+### Enterprise-Grade Linux Security Control Platform
 
 [![OS: Parrot OS / Debian](https://img.shields.io/badge/OS-Parrot%20OS%20%7C%20Debian-blue.svg)](https://parrotsec.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)](https://github.com/cyclonite69/parrot-booty-protection)
+[![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](https://github.com/cyclonite69/parrot-booty-protection)
 [![Security: Audited](https://img.shields.io/badge/Security-Audited-red.svg)](docs/)
 
-**Parrot Booty Protection** is a production-ready, modular security orchestration platform that transforms Linux hardening from ad-hoc scripts into a cohesive, auditable defense system. Built with defense-in-depth principles, it provides automated scanning, professional reporting, and real-time monitoring for Parrot OS and Debian-based systems.
+**Parrot Booty Protection** is a production-ready security control platform that enforces operator sovereignty over Linux hardening. Built with defense-in-depth principles and **zero-tolerance for autonomous configuration changes**, it provides automated scanning, professional reporting, real-time monitoring, and a local web control plane.
 
 ---
 
-## 🎯 Why PBP?
+## 🎯 What Makes PBP Different?
 
-Traditional security hardening is fragmented, error-prone, and difficult to maintain. PBP solves this by providing:
+Traditional security tools make changes without asking. PBP **enforces operator authority**:
 
-- **🧩 Modular Architecture** - Enable only what you need, disable what you don't
-- **🔄 Rollback Capability** - Every change is reversible with automatic backups
-- **📊 Risk Quantification** - Know your security posture with numerical risk scores
-- **📄 Professional Reports** - PDF/HTML reports for compliance and auditing
-- **🤖 Automated Scanning** - Daily security checks via systemd timers
-- **🖥️ Real-Time Monitoring** - TUI dashboard for instant visibility
-- **🔍 Bug Hunt Mode** - Comprehensive system validation in one command
-- **✅ Production-Grade** - Security audited, tested, and documented
+- **🛡️ Operator Sovereignty** - No autonomous configuration changes, ever
+- **📋 Policy-Driven** - Single source of truth for all security decisions
+- **🔐 Integrity Monitoring** - Protected files watched continuously
+- **⚠️ Alert Framework** - Instant notification of violations
+- **🖥️ Control Plane** - Local web dashboard (no cloud dependencies)
+- **🔄 Rollback Capability** - Every change is reversible
+- **📊 Risk Quantification** - Know your security posture with numerical scores
+- **📄 Professional Reports** - PDF/HTML reports for compliance
+
+**PBP is not a script collection. It's a security control platform.**
 
 ---
 
@@ -61,6 +63,9 @@ cd parrot-booty-protection
 # Install PBP
 sudo bash scripts/install.sh
 
+# Install control system (operator sovereignty)
+sudo bash scripts/install_control.sh
+
 # Install reporting dependencies (PDF generation)
 sudo bash scripts/install_reporting_deps.sh
 ```
@@ -68,12 +73,16 @@ sudo bash scripts/install_reporting_deps.sh
 ### Basic Usage
 
 ```bash
+# Start control plane
+pbp control start
+# Access: http://localhost:7777
+
 # List available modules
 pbp list
 
 # Enable core security modules
 sudo pbp enable time      # NTS time synchronization
-sudo pbp enable dns       # Encrypted DNS
+sudo pbp enable dns       # Unbound DNS with DoH/DoT
 sudo pbp enable network   # Firewall
 
 # Run security scan
@@ -82,6 +91,12 @@ sudo pbp scan
 # View system status
 pbp status
 
+# Check integrity
+pbp integrity
+
+# View alerts
+pbp alerts
+
 # Launch interactive dashboard
 pbp dashboard
 ```
@@ -89,6 +104,9 @@ pbp dashboard
 ### Enable Automated Monitoring
 
 ```bash
+# Integrity monitoring (continuous)
+sudo systemctl enable --now pbp-integrity.service
+
 # Daily security scans
 sudo systemctl enable --now pbp-scan-daily.timer
 
@@ -186,8 +204,8 @@ PBP quantifies your security posture with weighted risk scores:
 
 ```bash
 pbp list                     # List all modules
-pbp enable <module>          # Enable a module
-pbp disable <module>         # Disable a module
+pbp enable <module>          # Enable a module (requires approval)
+pbp disable <module>         # Disable a module (requires approval)
 pbp rollback <module>        # Revert to previous configuration
 ```
 
@@ -201,6 +219,16 @@ pbp health                   # Run health checks
 pbp bughunt                  # Comprehensive validation
 ```
 
+### Control & Monitoring
+
+```bash
+pbp control start            # Start web control plane
+pbp control stop             # Stop web control plane
+pbp integrity                # Check file integrity
+pbp alerts                   # View security alerts
+pbp dashboard                # Launch TUI dashboard
+```
+
 ### Reporting
 
 ```bash
@@ -209,12 +237,6 @@ pbp report <id>              # View specific report
 pbp report <id> html         # Open HTML report in browser
 pbp compare <id1> <id2>      # Compare two reports
 pbp-report <scanner> <file>  # Generate report from scanner output
-```
-
-### Monitoring
-
-```bash
-pbp dashboard                # Launch TUI dashboard
 ```
 
 ---
@@ -341,6 +363,8 @@ Every configuration change includes:
 
 ## 📚 Documentation
 
+- **[Control Restoration](docs/CONTROL_RESTORATION.md)** - Operator sovereignty system
+- **[Quick Start Guide](docs/QUICKSTART_CONTROL.md)** - Get started in 5 minutes
 - **[Reporting System](docs/REPORTING_SYSTEM.md)** - Report generation guide
 - **[Security Audit](docs/SECURITY_AUDIT.md)** - Security assessment findings
 - **[Phase Documentation](docs/)** - Complete implementation phases
