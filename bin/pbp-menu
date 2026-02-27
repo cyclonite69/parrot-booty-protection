@@ -1,0 +1,359 @@
+#!/bin/bash
+# PBP Command Deck - Whiptail Orchestration Interface
+# Operator sovereignty enforced - NO automation
+
+set -euo pipefail
+
+BACKTITLE="🏴‍☠️ Parrot Booty Protection - Command Deck"
+PBP_BIN="/opt/pbp/bin/pbp"
+
+# Colors for status
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+get_module_status() {
+    local module="$1"
+    if $PBP_BIN status 2>/dev/null | grep -q "^$module.*enabled"; then
+        echo "ENABLED"
+    elif $PBP_BIN status 2>/dev/null | grep -q "^$module.*installed"; then
+        echo "INSTALLED"
+    else
+        echo "UNINSTALLED"
+    fi
+}
+
+get_dns_status() {
+    if systemctl is-active --quiet unbound 2>/dev/null; then
+        echo "ACTIVE"
+    else
+        echo "INACTIVE"
+    fi
+}
+
+get_firewall_status() {
+    if sudo nft list ruleset 2>/dev/null | grep -q "policy drop"; then
+        echo "ACTIVE"
+    else
+        echo "INACTIVE"
+    fi
+}
+
+show_ship_status() {
+    local status_text=""
+    
+    status_text+="=== SECURITY MODULES ===\n"
+    for module in time dns network container audit rootkit recon; do
+        local state=$(get_module_status "$module")
+        status_text+="$module: $state\n"
+    done
+    
+    status_text+="\n=== SYSTEM STATUS ===\n"
+    status_text+="DNS Resolver: $(get_dns_status)\n"
+    status_text+="Firewall: $(get_firewall_status)\n"
+    
+    status_text+="\n=== AUTOMATION ===\n"
+    status_text+="Systemd Services: $(systemctl list-units --state=active | grep -c pbp || echo 0)\n"
+    status_text+="Cron Jobs: $(crontab -l 2>/dev/null | grep -cv '^#' || echo 0)\n"
+    
+    whiptail --title "Ship Status" --msgbox "$status_text" 20 60
+}
+
+module_menu() {
+    while true; do
+        local options=()
+        
+        for module in time dns network container audit rootkit recon; do
+            local state=$(get_module_status "$module")
+            options+=("$module" "[$state]")
+        done
+        
+        options+=("BACK" "Return to main menu")
+        
+        local choice=$(whiptail --title "Security Modules" \
+            --backtitle "$BACKTITLE" \
+            --menu "Select module to manage:" 20 60 10 \
+            "${options[@]}" \
+            3>&1 1>&2 2>&3)
+        
+        if [ $? -ne 0 ] || [ "$choice" = "BACK" ]; then
+            break
+        fi
+        
+        manage_module "$choice"
+    done
+}
+
+manage_module() {
+    local module="$1"
+    local state=$(get_module_status "$module")
+    
+    local options=()
+    
+    if [ "$state" = "UNINSTALLED" ]; then
+        options+=("INSTALL" "Install $module")
+    fi
+    
+    if [ "$state" = "INSTALLED" ]; then
+        options+=("ENABLE" "Enable $module")
+    fi
+    
+    if [ "$state" = "ENABLED" ]; then
+        options+=("DISABLE" "Disable $module")
+        options+=("HEALTH" "Check health")
+        options+=("SCAN" "Run scan")
+    fi
+    
+    options+=("INFO" "Show module info")
+    options+=("BACK" "Return")
+    
+    local action=$(whiptail --title "Manage: $module" \
+        --backtitle "$BACKTITLE" \
+        --menu "Current status: $state" 20 60 10 \
+        "${options[@]}" \
+        3>&1 1>&2 2>&3)
+    
+    if [ $? -ne 0 ] || [ "$action" = "BACK" ]; then
+        return
+    fi
+    
+    case "$action" in
+        INSTALL)
+            if whiptail --title "Confirm" --yesno "Install $module?" 8 40; then
+                sudo $PBP_BIN enable "$module" 2>&1 | tee /tmp/pbp-output.txt
+                whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+            fi
+            ;;
+        ENABLE)
+            if whiptail --title "Confirm" --yesno "Enable $module?" 8 40; then
+                sudo $PBP_BIN enable "$module" 2>&1 | tee /tmp/pbp-output.txt
+                whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+            fi
+            ;;
+        DISABLE)
+            if whiptail --title "Confirm" --yesno "Disable $module?" 8 40; then
+                sudo $PBP_BIN disable "$module" 2>&1 | tee /tmp/pbp-output.txt
+                whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+            fi
+            ;;
+        HEALTH)
+            $PBP_BIN health "$module" 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Health Check: $module" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+        SCAN)
+            sudo $PBP_BIN scan "$module" 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Scan: $module" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+        INFO)
+            cat "/opt/pbp/modules/$module/manifest.json" 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Module Info: $module" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+    esac
+}
+
+dns_control_menu() {
+    while true; do
+        local dns_status=$(get_dns_status)
+        
+        local choice=$(whiptail --title "DNS Control" \
+            --backtitle "$BACKTITLE" \
+            --menu "DNS Status: $dns_status" 20 60 10 \
+            "STATUS" "Check DNS configuration" \
+            "GUARD" "Start DNS sovereignty guard" \
+            "STOP" "Stop DNS guard" \
+            "LOGS" "View DNS alerts" \
+            "BACK" "Return to main menu" \
+            3>&1 1>&2 2>&3)
+        
+        if [ $? -ne 0 ] || [ "$choice" = "BACK" ]; then
+            break
+        fi
+        
+        case "$choice" in
+            STATUS)
+                {
+                    echo "=== DNS Configuration ==="
+                    cat /etc/resolv.conf 2>/dev/null || echo "Not found"
+                    echo ""
+                    echo "=== Unbound Status ==="
+                    systemctl status unbound 2>&1 || echo "Not running"
+                } | tee /tmp/pbp-output.txt
+                whiptail --title "DNS Status" --textbox /tmp/pbp-output.txt 20 70
+                ;;
+            GUARD)
+                if whiptail --title "Confirm" --yesno "Start DNS sovereignty guard?" 8 40; then
+                    sudo systemctl start dns-sovereignty-guard 2>&1 | tee /tmp/pbp-output.txt
+                    whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+                fi
+                ;;
+            STOP)
+                if whiptail --title "Confirm" --yesno "Stop DNS sovereignty guard?" 8 40; then
+                    sudo systemctl stop dns-sovereignty-guard 2>&1 | tee /tmp/pbp-output.txt
+                    whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+                fi
+                ;;
+            LOGS)
+                sudo tail -50 /var/log/pbp/dns-alerts.log 2>&1 | tee /tmp/pbp-output.txt
+                whiptail --title "DNS Alerts" --textbox /tmp/pbp-output.txt 20 70
+                ;;
+        esac
+    done
+}
+
+recon_audit_menu() {
+    local choice=$(whiptail --title "Recon & Audit" \
+        --backtitle "$BACKTITLE" \
+        --menu "Select action:" 20 60 10 \
+        "SCAN" "Run full security scan" \
+        "BUGHUNT" "Run comprehensive bug hunt" \
+        "INTEGRITY" "Check file integrity" \
+        "ALERTS" "View security alerts" \
+        "BACK" "Return to main menu" \
+        3>&1 1>&2 2>&3)
+    
+    if [ $? -ne 0 ] || [ "$choice" = "BACK" ]; then
+        return
+    fi
+    
+    case "$choice" in
+        SCAN)
+            if whiptail --title "Confirm" --yesno "Run full security scan?" 8 40; then
+                sudo $PBP_BIN scan 2>&1 | tee /tmp/pbp-output.txt
+                whiptail --title "Scan Complete" --textbox /tmp/pbp-output.txt 20 70
+            fi
+            ;;
+        BUGHUNT)
+            if whiptail --title "Confirm" --yesno "Run bug hunt validator?" 8 40; then
+                sudo /opt/pbp/bughunt/bughunt.sh 2>&1 | tee /tmp/pbp-output.txt
+                whiptail --title "Bug Hunt Complete" --textbox /tmp/pbp-output.txt 20 70
+            fi
+            ;;
+        INTEGRITY)
+            $PBP_BIN integrity 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Integrity Check" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+        ALERTS)
+            $PBP_BIN alerts 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Security Alerts" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+    esac
+}
+
+reports_menu() {
+    local choice=$(whiptail --title "Reports" \
+        --backtitle "$BACKTITLE" \
+        --menu "Select action:" 20 60 10 \
+        "LIST" "List all reports" \
+        "VIEW" "View latest report" \
+        "GENERATE" "Generate new report" \
+        "BACK" "Return to main menu" \
+        3>&1 1>&2 2>&3)
+    
+    if [ $? -ne 0 ] || [ "$choice" = "BACK" ]; then
+        return
+    fi
+    
+    case "$choice" in
+        LIST)
+            $PBP_BIN reports 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Reports" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+        VIEW)
+            $PBP_BIN report 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Latest Report" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+        GENERATE)
+            if whiptail --title "Confirm" --yesno "Generate new report?" 8 40; then
+                sudo $PBP_BIN scan 2>&1 | tee /tmp/pbp-output.txt
+                whiptail --title "Report Generated" --textbox /tmp/pbp-output.txt 20 70
+            fi
+            ;;
+    esac
+}
+
+system_tools_menu() {
+    local choice=$(whiptail --title "System Tools" \
+        --backtitle "$BACKTITLE" \
+        --menu "Select tool:" 20 60 10 \
+        "DASHBOARD" "Launch TUI dashboard" \
+        "CONTROL" "Start web control plane" \
+        "HEALTH" "Run health checks" \
+        "VERSION" "Show version" \
+        "BACK" "Return to main menu" \
+        3>&1 1>&2 2>&3)
+    
+    if [ $? -ne 0 ] || [ "$choice" = "BACK" ]; then
+        return
+    fi
+    
+    case "$choice" in
+        DASHBOARD)
+            clear
+            /opt/pbp/bin/pbp-dashboard
+            ;;
+        CONTROL)
+            $PBP_BIN control start 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Control Plane" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+        HEALTH)
+            $PBP_BIN health 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Health Check" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+        VERSION)
+            $PBP_BIN version 2>&1 | tee /tmp/pbp-output.txt
+            whiptail --title "Version" --textbox /tmp/pbp-output.txt 20 70
+            ;;
+    esac
+}
+
+main_menu() {
+    while true; do
+        local choice=$(whiptail --title "Main Menu" \
+            --backtitle "$BACKTITLE" \
+            --menu "Select operation:" 20 60 10 \
+            "1" "Ship Status" \
+            "2" "Security Modules" \
+            "3" "DNS Control" \
+            "4" "Recon & Audit" \
+            "5" "Reports" \
+            "6" "System Tools" \
+            "7" "Exit" \
+            3>&1 1>&2 2>&3)
+        
+        if [ $? -ne 0 ]; then
+            choice="7"
+        fi
+        
+        case "$choice" in
+            1) show_ship_status ;;
+            2) module_menu ;;
+            3) dns_control_menu ;;
+            4) recon_audit_menu ;;
+            5) reports_menu ;;
+            6) system_tools_menu ;;
+            7)
+                if whiptail --title "Confirm Exit" --yesno "Exit PBP Command Deck?" 8 40; then
+                    clear
+                    echo "⚓ Parrot Booty Protection - Standing by"
+                    exit 0
+                fi
+                ;;
+        esac
+    done
+}
+
+# Check dependencies
+if ! command -v whiptail &> /dev/null; then
+    echo "Error: whiptail not found. Install: apt-get install whiptail"
+    exit 1
+fi
+
+if [ ! -x "$PBP_BIN" ]; then
+    echo "Error: pbp not found at $PBP_BIN"
+    exit 1
+fi
+
+# Launch
+clear
+main_menu
