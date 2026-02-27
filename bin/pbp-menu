@@ -15,12 +15,12 @@ NC='\033[0m'
 
 get_module_status() {
     local module="$1"
-    if $PBP_BIN status 2>/dev/null | grep -q "^$module.*enabled"; then
+    if $PBP_BIN list 2>/dev/null | grep -q "^✓ $module"; then
         echo "ENABLED"
-    elif $PBP_BIN status 2>/dev/null | grep -q "^$module.*installed"; then
-        echo "INSTALLED"
+    elif $PBP_BIN list 2>/dev/null | grep -q "^  $module"; then
+        echo "AVAILABLE"
     else
-        echo "UNINSTALLED"
+        echo "UNKNOWN"
     fi
 }
 
@@ -91,11 +91,7 @@ manage_module() {
     
     local options=()
     
-    if [ "$state" = "UNINSTALLED" ]; then
-        options+=("INSTALL" "Install $module")
-    fi
-    
-    if [ "$state" = "INSTALLED" ]; then
+    if [ "$state" = "AVAILABLE" ]; then
         options+=("ENABLE" "Enable $module")
     fi
     
@@ -119,12 +115,6 @@ manage_module() {
     fi
     
     case "$action" in
-        INSTALL)
-            if whiptail --title "Confirm" --yesno "Install $module?" 8 40; then
-                sudo $PBP_BIN enable "$module" 2>&1 | tee /tmp/pbp-output.txt
-                whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
-            fi
-            ;;
         ENABLE)
             if whiptail --title "Confirm" --yesno "Enable $module?" 8 40; then
                 sudo $PBP_BIN enable "$module" 2>&1 | tee /tmp/pbp-output.txt
