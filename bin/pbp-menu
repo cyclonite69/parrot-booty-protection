@@ -5,7 +5,7 @@
 set -euo pipefail
 
 BACKTITLE="🏴‍☠️ Parrot Booty Protection - Command Deck"
-PBP_BIN="/opt/pbp/bin/pbp"
+PBP_BIN="${PBP_ROOT:-/opt/pbp}/bin/pbp"
 
 # Colors for status
 RED='\033[0;31m'
@@ -16,14 +16,31 @@ NC='\033[0m'
 get_module_status() {
     local module="$1"
     local list_output
-    list_output="$($PBP_BIN list 2>/dev/null || true)"
-
-    if grep -qE "^✓ ${module}( |-)" <<< "$list_output"; then
+    list_output="${2:-$(get_module_list_output)}"
+    if grep -qE "^✓ ${module}( |-|$)" <<< "$list_output"; then
         echo "ENABLED"
-    elif grep -qE "^(○|◐) ${module}( |-)" <<< "$list_output"; then
+    elif grep -qE "^(  |○ |◐ )${module}( |-|$)" <<< "$list_output"; then
         echo "AVAILABLE"
     else
         echo "UNKNOWN"
+    fi
+}
+
+get_module_list_output() {
+    $PBP_BIN list 2>/dev/null || true
+}
+
+get_menu_modules() {
+    local list_output="${1:-$(get_module_list_output)}"
+    printf '%s\n' "$list_output" \
+        | awk '/^✓ /{print $2} /^  /{print $2} /^(○|◐) /{print $2}'
+}
+
+get_control_plane_status() {
+    if $PBP_BIN control status 2>/dev/null | grep -qE "Control plane running|running"; then
+        echo "ACTIVE"
+    else
+        echo "INACTIVE"
     fi
 }
 
@@ -43,17 +60,6 @@ get_dns_guard_status() {
     fi
 }
 
-get_control_plane_status() {
-    local output
-    output="$($PBP_BIN control status 2>/dev/null || true)"
-
-    if grep -q "running" <<< "$output"; then
-        echo "ACTIVE"
-    else
-        echo "INACTIVE"
-    fi
-}
-
 get_firewall_status() {
     if sudo nft list ruleset 2>/dev/null | grep -q "policy drop"; then
         echo "ACTIVE"
@@ -64,10 +70,13 @@ get_firewall_status() {
 
 show_ship_status() {
     local status_text=""
+    local list_output
+    list_output="$(get_module_list_output)"
     
     status_text+="=== SECURITY MODULES ===\n"
-    for module in time dns network container audit rootkit recon; do
-        local state=$(get_module_status "$module")
+    for module in $(get_menu_modules "$list_output"); do
+        local state
+        state=$(get_module_status "$module" "$list_output")
         status_text+="$module: $state\n"
     done
     
@@ -87,9 +96,12 @@ show_ship_status() {
 module_menu() {
     while true; do
         local options=()
+        local list_output
+        list_output="$(get_module_list_output)"
         
-        for module in time dns network container audit rootkit recon; do
-            local state=$(get_module_status "$module")
+        for module in $(get_menu_modules "$list_output"); do
+            local state
+            state=$(get_module_status "$module" "$list_output")
             options+=("$module" "[$state]")
         done
         
@@ -304,7 +316,7 @@ system_tools_menu() {
     case "$choice" in
         DASHBOARD)
             clear
-            /opt/pbp/bin/pbp-dashboard
+            "${PBP_ROOT:-/opt/pbp}/bin/pbp-dashboard"
             ;;
         CONTROL)
             $PBP_BIN control start 2>&1 | tee /tmp/pbp-output.txt
