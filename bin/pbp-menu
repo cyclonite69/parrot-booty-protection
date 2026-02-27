@@ -5,7 +5,7 @@
 set -euo pipefail
 
 BACKTITLE="🏴‍☠️ Parrot Booty Protection - Command Deck"
-PBP_BIN="/opt/pbp/bin/pbp"
+PBP_BIN="${PBP_ROOT:-/opt/pbp}/bin/pbp"
 
 # Colors for status
 RED='\033[0;31m'
@@ -26,6 +26,18 @@ get_menu_modules() {
             modules+=("${BASH_REMATCH[2]}")
         fi
     done <<< "$list_output"
+
+    # Fallback: discover module folders from runtime root if list output is unavailable
+    if [ ${#modules[@]} -eq 0 ]; then
+        local module_root
+        module_root="${PBP_ROOT:-/opt/pbp}/modules"
+
+        if [ -d "$module_root" ]; then
+            while IFS= read -r module; do
+                modules+=("$module")
+            done < <(find "$module_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -v '^_' | sort)
+        fi
+    fi
 
     if [ ${#modules[@]} -eq 0 ]; then
         modules=(time dns network container audit rootkit recon)
@@ -67,7 +79,7 @@ get_control_plane_status() {
     local output
     output="$($PBP_BIN control status 2>/dev/null || true)"
 
-    if grep -q "running" <<< "$output"; then
+    if grep -q "Control plane running" <<< "$output"; then
         echo "ACTIVE"
     else
         echo "INACTIVE"
