@@ -48,7 +48,8 @@ get_menu_modules() {
 
 get_module_status() {
     local module="$1"
-    local list_output="${2:-$(get_module_list_output)}"
+    local list_output
+    list_output="${2:-$(get_module_list_output)}"
 
     if grep -qE "^✓ ${module}( |-)" <<< "$list_output"; then
         echo "ENABLED"
@@ -79,7 +80,7 @@ get_control_plane_status() {
     local output
     output="$($PBP_BIN control status 2>/dev/null || true)"
 
-    if grep -q "Control plane running" <<< "$output"; then
+    if grep -qE "Control plane running|running" <<< "$output"; then
         echo "ACTIVE"
     else
         echo "INACTIVE"
@@ -342,7 +343,7 @@ system_tools_menu() {
     case "$choice" in
         DASHBOARD)
             clear
-            /opt/pbp/bin/pbp-dashboard
+            "${PBP_ROOT:-/opt/pbp}/bin/pbp-dashboard"
             ;;
         CONTROL)
             $PBP_BIN control start 2>&1 | tee /tmp/pbp-output.txt
