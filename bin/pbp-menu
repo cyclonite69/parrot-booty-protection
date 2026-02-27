@@ -15,9 +15,12 @@ NC='\033[0m'
 
 get_module_status() {
     local module="$1"
-    if $PBP_BIN list 2>/dev/null | grep -q "^✓ $module"; then
+    local list_output
+    list_output="$($PBP_BIN list 2>/dev/null || true)"
+
+    if grep -qE "^✓ ${module}( |-)" <<< "$list_output"; then
         echo "ENABLED"
-    elif $PBP_BIN list 2>/dev/null | grep -q "^  $module"; then
+    elif grep -qE "^(○|◐) ${module}( |-)" <<< "$list_output"; then
         echo "AVAILABLE"
     else
         echo "UNKNOWN"
@@ -26,6 +29,25 @@ get_module_status() {
 
 get_dns_status() {
     if systemctl is-active --quiet unbound 2>/dev/null; then
+        echo "ACTIVE"
+    else
+        echo "INACTIVE"
+    fi
+}
+
+get_dns_guard_status() {
+    if systemctl is-active --quiet dns-sovereignty-guard 2>/dev/null; then
+        echo "ACTIVE"
+    else
+        echo "INACTIVE"
+    fi
+}
+
+get_control_plane_status() {
+    local output
+    output="$($PBP_BIN control status 2>/dev/null || true)"
+
+    if grep -q "running" <<< "$output"; then
         echo "ACTIVE"
     else
         echo "INACTIVE"
@@ -51,6 +73,8 @@ show_ship_status() {
     
     status_text+="\n=== SYSTEM STATUS ===\n"
     status_text+="DNS Resolver: $(get_dns_status)\n"
+    status_text+="DNS Guard: $(get_dns_guard_status)\n"
+    status_text+="Control Plane: $(get_control_plane_status)\n"
     status_text+="Firewall: $(get_firewall_status)\n"
     
     status_text+="\n=== AUTOMATION ===\n"
