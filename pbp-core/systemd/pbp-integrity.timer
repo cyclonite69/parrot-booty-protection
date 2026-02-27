@@ -1,9 +1,0 @@
-[Unit]
-Description=Daily PBP Hull Integrity Scan
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-
-[Install]
-WantedBy=timers.target

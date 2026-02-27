@@ -1,8 +1,0 @@
-[Unit]
-Description=PBP File Integrity Scan
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/opt/pbp/modules/pbp-integrity.sh
-User=root

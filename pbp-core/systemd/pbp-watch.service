@@ -1,8 +1,0 @@
-[Unit]
-Description=PBP Periodic Security Watch Modules
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash -c "/opt/pbp/modules/pbp-network.sh; /opt/pbp/modules/pbp-persistence.sh; /opt/pbp/modules/pbp-container.sh; /opt/pbp/modules/pbp-privesc.sh"
-User=root
