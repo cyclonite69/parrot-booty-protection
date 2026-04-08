@@ -30,15 +30,39 @@ check_module_health() {
 
 check_system_health() {
     local failed=0
-    
-    # Check critical services
-    local services=("systemd-resolved" "chronyd")
-    for svc in "${services[@]}"; do
-        if ! systemctl is-active "$svc" &>/dev/null; then
-            log_warn "Service not active: ${svc}"
-            ((failed++))
+
+    is_active_service() {
+        local svc="$1"
+        if command -v systemctl &>/dev/null && systemctl is-active "$svc" &>/dev/null; then
+            return 0
         fi
-    done
+        if pgrep -x "$svc" &>/dev/null; then
+            return 0
+        fi
+        return 1
+    }
+    
+    # DNS service can be either unbound or systemd-resolved.
+    if is_active_service unbound; then
+        :
+    elif is_active_service systemd-resolved; then
+        :
+    else
+        log_warn "No DNS resolver service active (expected: unbound or systemd-resolved)"
+        ((failed++))
+    fi
+
+    # Time sync service: allow either chronyd or systemd-timesyncd.
+    if is_active_service chronyd; then
+        :
+    elif is_active_service systemd-timesyncd; then
+        :
+    elif is_active_service ntpd; then
+        :
+    else
+        log_warn "No time sync service active (expected: chronyd, ntpd, or systemd-timesyncd)"
+        ((failed++))
+    fi
     
     # Check network connectivity
     if ! ping -c1 -W2 1.1.1.1 &>/dev/null; then

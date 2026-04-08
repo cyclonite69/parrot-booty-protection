@@ -1,0 +1,22 @@
+{
+  "name": "logs",
+  "version": "1.0.0",
+  "description": "Security log retention and ledger checks",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/logrotate.d/pbp-security"
+  ],
+  "config": {
+    "enabled": true
+  }
+}

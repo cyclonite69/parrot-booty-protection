@@ -30,17 +30,22 @@ Traditional security tools make changes without asking. PBP **enforces operator 
 
 ## 🛡️ Security Modules
 
-PBP provides 7 independent security modules, each with full lifecycle management:
+PBP provides 12 independent security modules, each with full lifecycle management:
 
 | Module | Purpose | Technology | Risk Mitigation |
 |--------|---------|------------|-----------------|
 | **⏰ TIME** | NTS-authenticated time sync | chrony + NTS | Prevents time-based attacks, ensures certificate validity |
-| **🔒 DNS** | Encrypted DNS queries | systemd-resolved + DoT | Blocks DNS hijacking, surveillance, cache poisoning |
+| **🔒 DNS** | Encrypted DNS queries | unbound + DoT | Blocks DNS hijacking, surveillance, cache poisoning |
 | **🛡️ NETWORK** | Stateful firewall | nftables | Default-deny policy, connection tracking, egress filtering |
 | **📦 CONTAINER** | Rootless container security | Podman + seccomp | Prevents privilege escalation, container breakouts |
 | **📋 AUDIT** | System activity monitoring | auditd | Detects unauthorized changes, tracks privileged commands |
 | **🔍 ROOTKIT** | Malware detection | rkhunter + chkrootkit | Identifies rootkits, hidden processes, file tampering |
 | **🌐 RECON** | Network exposure validation | nmap | Maps attack surface, detects misconfigurations |
+| **🔌 USB** | Device allowlist enforcement | USBGuard | Blocks unauthorized USB devices |
+| **🚫 FAIL2BAN** | Brute-force lockout | fail2ban | Reduces password-guessing attacks |
+| **🗂️ MOUNT** | Filesystem hardening checks | sysctl + mount policy | Reduces local abuse paths |
+| **🎭 MAC** | MAC randomization controls | NetworkManager | Reduces tracking correlation |
+| **📜 LOGS** | Log policy checks | logrotate + ledger checks | Improves retention hygiene |
 
 Each module includes:
 - ✅ Installation automation
@@ -215,7 +220,7 @@ pbp rollback <module>        # Revert to previous configuration
 pbp scan                     # Scan all enabled modules
 pbp scan <module>            # Scan specific module
 pbp status                   # Show system status
-pbp health                   # Run health checks
+pbp health [module]          # Run health checks (all or one module)
 pbp bughunt                  # Comprehensive validation
 ```
 
@@ -271,6 +276,11 @@ pbp-report <scanner> <file>  # Generate report from scanner output
 │ • audit        │  │                │  │              │
 │ • rootkit      │  │                │  │              │
 │ • recon        │  │                │  │              │
+│ • usb          │  │                │  │              │
+│ • fail2ban     │  │                │  │              │
+│ • mount        │  │                │  │              │
+│ • mac          │  │                │  │              │
+│ • logs         │  │                │  │              │
 └────────────────┘  └────────────────┘  └──────────────┘
 ```
 
@@ -305,6 +315,11 @@ UNINSTALLED → install → INSTALLED → enable → ENABLED
 │   ├── audit/               # auditd monitoring
 │   ├── rootkit/             # Malware detection
 │   └── recon/               # Network scanning
+│   ├── usb/                 # USBGuard allowlisting
+│   ├── fail2ban/            # Brute-force protection
+│   ├── mount/               # Mount safety controls
+│   ├── mac/                 # MAC randomization
+│   └── logs/                # Log policy checks
 ├── reporting/
 │   ├── engine.sh            # Report engine
 │   ├── parsers/             # Scanner parsers
@@ -366,7 +381,7 @@ Every configuration change includes:
 - **[Control Restoration](docs/CONTROL_RESTORATION.md)** - Operator sovereignty system
 - **[Quick Start Guide](docs/QUICKSTART_CONTROL.md)** - Get started in 5 minutes
 - **[Reporting System](docs/REPORTING_SYSTEM.md)** - Report generation guide
-- **[Security Audit](docs/SECURITY_AUDIT.md)** - Security assessment findings
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and components
 - **[Phase Documentation](docs/)** - Complete implementation phases
 
 ---
@@ -406,7 +421,7 @@ modules/your_module/
 
 - **Total Files**: 85+
 - **Lines of Code**: ~6,400 (focused, minimal)
-- **Security Modules**: 7 fully implemented
+- **Security Modules**: 12 fully implemented
 - **Hook Scripts**: 35 (5 per module)
 - **Core Libraries**: 9
 - **CLI Commands**: 13
@@ -447,7 +462,7 @@ modules/your_module/
 ## 🗺️ Roadmap
 
 ### Phase 5 (Planned)
-- [ ] Web dashboard (localhost:8080)
+- [ ] Web dashboard enhancements (localhost:7777)
 - [ ] Policy profiles (home/privacy/pentest/paranoid)
 - [ ] Email alerting
 - [ ] Baseline tracking & trending

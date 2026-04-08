@@ -82,19 +82,23 @@ generate_html_report() {
         </div>
 EOF
 
-    # Add module-specific sections
-    local modules=$(echo "$json_report" | jq -r '.data | keys[]' 2>/dev/null || echo "")
-    
-    if [[ -n "$modules" ]]; then
-        for module in $modules; do
-            local module_data=$(echo "$json_report" | jq -c ".data.${module}" 2>/dev/null)
-            [[ "$module_data" == "null" ]] && continue
-            
-            local findings=$(echo "$module_data" | jq -c '.findings // []')
-            local finding_count=$(echo "$findings" | jq 'length')
-            local module_risk=$(echo "$module_data" | jq -r '.risk_score // 0')
-            
-            cat >> "$output_file" << EOF
+    # Add module-specific sections.
+    # Supports two report shapes:
+    # 1) .data = { module, findings, risk_score, ... }
+    # 2) .data = { dns: {...}, network: {...}, ... }
+    local single_module=""
+    single_module=$(echo "$json_report" | jq -r '.data.module // empty' 2>/dev/null || true)
+
+    render_module_section() {
+        local module="$1"
+        local module_data="$2"
+        local findings finding_count module_risk
+
+        findings=$(echo "$module_data" | jq -c '.findings // []')
+        finding_count=$(echo "$findings" | jq 'length')
+        module_risk=$(echo "$module_data" | jq -r '.risk_score // 0')
+
+        cat >> "$output_file" << EOF
         <div class="section">
             <h2>📦 ${module^^} Module</h2>
             <div class="stats">
@@ -108,16 +112,16 @@ EOF
                 </div>
             </div>
 EOF
-            
-            if [[ $finding_count -gt 0 ]]; then
-                echo "$findings" | jq -c '.[]' | while read -r finding; do
-                    local id=$(echo "$finding" | jq -r '.id')
-                    local severity=$(echo "$finding" | jq -r '.severity' | tr '[:upper:]' '[:lower:]')
-                    local title=$(echo "$finding" | jq -r '.title')
-                    local desc=$(echo "$finding" | jq -r '.description')
-                    local remedy=$(echo "$finding" | jq -r '.remediation')
-                    
-                    cat >> "$output_file" << EOF
+
+        if [[ $finding_count -gt 0 ]]; then
+            echo "$findings" | jq -c '.[]' | while read -r finding; do
+                local severity title desc remedy
+                severity=$(echo "$finding" | jq -r '.severity' | tr '[:upper:]' '[:lower:]')
+                title=$(echo "$finding" | jq -r '.title')
+                desc=$(echo "$finding" | jq -r '.description')
+                remedy=$(echo "$finding" | jq -r '.remediation')
+
+                cat >> "$output_file" << EOF
             <div class="finding ${severity}">
                 <div class="finding-header">
                     <span class="finding-title">${title}</span>
@@ -127,13 +131,32 @@ EOF
                 <div class="finding-remedy">💡 ${remedy}</div>
             </div>
 EOF
-                done
-            else
-                echo '            <div class="no-findings">✓ No security issues detected</div>' >> "$output_file"
-            fi
-            
-            echo "        </div>" >> "$output_file"
-        done
+            done
+        else
+            echo '            <div class="no-findings">✓ No security issues detected</div>' >> "$output_file"
+        fi
+
+        echo "        </div>" >> "$output_file"
+    }
+
+    if [[ -n "$single_module" ]]; then
+        local module_data
+        module_data=$(echo "$json_report" | jq -c '.data')
+        render_module_section "$single_module" "$module_data"
+    else
+        local modules=""
+        modules=$(echo "$json_report" | jq -r '.data | keys[]' 2>/dev/null || true)
+        if [[ -n "$modules" ]]; then
+            for module in $modules; do
+                local module_data
+                module_data=$(echo "$json_report" | jq -c ".data.${module}" 2>/dev/null)
+                [[ "$module_data" == "null" ]] && continue
+                if ! echo "$module_data" | jq -e 'type == "object" and has("findings")' >/dev/null 2>&1; then
+                    continue
+                fi
+                render_module_section "$module" "$module_data"
+            done
+        fi
     fi
     
     cat >> "$output_file" << EOF

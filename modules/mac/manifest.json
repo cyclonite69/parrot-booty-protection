@@ -1,0 +1,22 @@
+{
+  "name": "mac",
+  "version": "1.0.0",
+  "description": "MAC address randomization for NetworkManager",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/NetworkManager/conf.d/pbp-mac-randomization.conf"
+  ],
+  "config": {
+    "enabled": true
+  }
+}

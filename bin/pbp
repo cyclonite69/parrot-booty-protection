@@ -30,7 +30,7 @@ COMMANDS:
     integrity           Check file integrity
     alerts              View security alerts
     rollback <module>   Revert module to previous state
-    health              Run system health checks
+    health [module]     Run system health checks (all or specific module)
     list                List available modules
     version             Show version information
 
@@ -118,6 +118,8 @@ cmd_alerts() {
 }
 
 cmd_health() {
+    local target_module="${1:-}"
+
     source "${PBP_ROOT}/core/health.sh"
     
     echo "=== System Health Check ==="
@@ -129,7 +131,23 @@ cmd_health() {
     
     echo
     echo "=== Module Health ==="
+    source "${PBP_ROOT}/core/registry.sh"
     source "${PBP_ROOT}/core/state.sh"
+
+    if [[ -n "$target_module" ]]; then
+        if ! get_module_manifest "$target_module" &>/dev/null; then
+            echo "Error: Unknown module: $target_module"
+            return 1
+        fi
+
+        if check_module_health "$target_module"; then
+            echo "✓ ${target_module}: OK"
+        else
+            echo "✗ ${target_module}: FAILED"
+        fi
+        return 0
+    fi
+
     for module in $(list_enabled_modules); do
         if check_module_health "$module"; then
             echo "✓ ${module}: OK"

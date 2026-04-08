@@ -1,0 +1,24 @@
+{
+  "name": "usb",
+  "version": "1.0.0",
+  "description": "USB device allowlist enforcement with USBGuard",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/usbguard/usbguard-daemon.conf",
+    "/etc/usbguard/rules.conf"
+  ],
+  "config": {
+    "policy_mode": "allowlist",
+    "enabled": true
+  }
+}

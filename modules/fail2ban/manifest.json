@@ -1,0 +1,22 @@
+{
+  "name": "fail2ban",
+  "version": "1.0.0",
+  "description": "Brute-force protection with Fail2Ban",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/fail2ban/jail.local"
+  ],
+  "config": {
+    "enabled": true
+  }
+}

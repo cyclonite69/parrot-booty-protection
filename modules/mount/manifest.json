@@ -1,0 +1,22 @@
+{
+  "name": "mount",
+  "version": "1.0.0",
+  "description": "Filesystem mount hardening controls",
+  "dependencies": [],
+  "conflicts": [],
+  "requires_root": true,
+  "reversible": true,
+  "hooks": {
+    "install": "install.sh",
+    "enable": "enable.sh",
+    "disable": "disable.sh",
+    "scan": "scan.sh",
+    "health": "health.sh"
+  },
+  "backup_files": [
+    "/etc/sysctl.d/99-pbp-mount.conf"
+  ],
+  "config": {
+    "enabled": true
+  }
+}

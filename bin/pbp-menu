@@ -6,12 +6,32 @@ set -euo pipefail
 
 BACKTITLE="🏴‍☠️ Parrot Booty Protection - Command Deck"
 PBP_BIN="${PBP_ROOT:-/opt/pbp}/bin/pbp"
+PBP_OUTPUT_FILE="/tmp/pbp-output-${UID}.txt"
 
 # Colors for status
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
+
+get_module_display_name() {
+    local module="$1"
+    case "$module" in
+        time) echo "Timekeeper" ;;
+        dns) echo "DNS Navigator" ;;
+        network) echo "Firewall Broadside" ;;
+        container) echo "Cargo Hold Security" ;;
+        audit) echo "Captain's Log Watch" ;;
+        rootkit) echo "Bilge Rat Hunter" ;;
+        recon) echo "Crow's Nest Recon" ;;
+        usb) echo "Boarding Party USB Guard" ;;
+        mount|mount_harden) echo "Hatch Lockdown" ;;
+        fail2ban) echo "Brig Guard (Fail2Ban)" ;;
+        mac|mac_randomize|mac_randomization) echo "False Flag Sails (MAC Cloak)" ;;
+        logs|log|log_explorer|ledger) echo "Captain's Ledger Watch" ;;
+        *) echo "$module" ;;
+    esac
+}
 
 get_module_status() {
     local module="$1"
@@ -33,7 +53,27 @@ get_module_list_output() {
 get_menu_modules() {
     local list_output="${1:-$(get_module_list_output)}"
     printf '%s\n' "$list_output" \
-        | awk '/^✓ /{print $2} /^  /{print $2} /^(○|◐) /{print $2}'
+        | awk '
+            /^(✓|○|◐)[[:space:]]+/ {
+                line=$0
+                sub(/^(✓|○|◐)[[:space:]]+/, "", line)
+                split(line, parts, /[[:space:]]*-[[:space:]]*/)
+                mod=parts[1]
+                if (mod != "" && mod !~ /^_/ && !seen[mod]++) {
+                    print mod
+                }
+                next
+            }
+            /^[[:space:]]{2,}[[:alnum:]_]/ {
+                line=$0
+                sub(/^[[:space:]]+/, "", line)
+                split(line, parts, /[[:space:]]*-[[:space:]]*/)
+                mod=parts[1]
+                if (mod != "" && mod !~ /^_/ && !seen[mod]++) {
+                    print mod
+                }
+            }
+        '
 }
 
 get_control_plane_status() {
@@ -76,8 +116,10 @@ show_ship_status() {
     status_text+="=== SECURITY MODULES ===\n"
     for module in $(get_menu_modules "$list_output"); do
         local state
+        local display
         state=$(get_module_status "$module" "$list_output")
-        status_text+="$module: $state\n"
+        display=$(get_module_display_name "$module")
+        status_text+="$display ($module): $state\n"
     done
     
     status_text+="\n=== SYSTEM STATUS ===\n"
@@ -101,15 +143,17 @@ module_menu() {
         
         for module in $(get_menu_modules "$list_output"); do
             local state
+            local display
             state=$(get_module_status "$module" "$list_output")
-            options+=("$module" "[$state]")
+            display=$(get_module_display_name "$module")
+            options+=("$module" "$display [$state]")
         done
         
         options+=("BACK" "Return to main menu")
         
-        local choice=$(whiptail --title "Security Modules" \
+        local choice=$(whiptail --title "War Room - Defense Modules" \
             --backtitle "$BACKTITLE" \
-            --menu "Select module to manage:" 20 60 10 \
+            --menu "Select defense module to manage:" 20 60 10 \
             "${options[@]}" \
             3>&1 1>&2 2>&3)
         
@@ -117,13 +161,15 @@ module_menu() {
             break
         fi
         
-        manage_module "$choice"
+        local selected_state
+        selected_state=$(get_module_status "$choice" "$list_output")
+        manage_module "$choice" "$selected_state"
     done
 }
 
 manage_module() {
     local module="$1"
-    local state=$(get_module_status "$module")
+    local state="${2:-$(get_module_status "$module")}"
     
     local options=()
     
@@ -135,6 +181,11 @@ manage_module() {
         options+=("DISABLE" "Disable $module")
         options+=("HEALTH" "Check health")
         options+=("SCAN" "Run scan")
+    fi
+    if [ "$module" = "usb" ]; then
+        options+=("USB_DEVICES" "List connected USB devices")
+        options+=("USB_RULES" "View USB allowlist rules")
+        options+=("USB_REFRESH" "Refresh allowlist from connected devices")
     fi
     
     options+=("INFO" "Show module info")
@@ -153,27 +204,53 @@ manage_module() {
     case "$action" in
         ENABLE)
             if whiptail --title "Confirm" --yesno "Enable $module?" 8 40; then
-                sudo $PBP_BIN enable "$module" 2>&1 | tee /tmp/pbp-output.txt
-                whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+                sudo $PBP_BIN enable "$module" 2>&1 | tee "$PBP_OUTPUT_FILE"
+                whiptail --title "Result" --textbox "$PBP_OUTPUT_FILE" 20 70
             fi
             ;;
         DISABLE)
             if whiptail --title "Confirm" --yesno "Disable $module?" 8 40; then
-                sudo $PBP_BIN disable "$module" 2>&1 | tee /tmp/pbp-output.txt
-                whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+                sudo $PBP_BIN disable "$module" 2>&1 | tee "$PBP_OUTPUT_FILE"
+                whiptail --title "Result" --textbox "$PBP_OUTPUT_FILE" 20 70
             fi
             ;;
         HEALTH)
-            $PBP_BIN health "$module" 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Health Check: $module" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN health "$module" 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Health Check: $module" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
         SCAN)
-            sudo $PBP_BIN scan "$module" 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Scan: $module" --textbox /tmp/pbp-output.txt 20 70
+            sudo $PBP_BIN scan "$module" 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Scan: $module" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
         INFO)
-            cat "/opt/pbp/modules/$module/manifest.json" 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Module Info: $module" --textbox /tmp/pbp-output.txt 20 70
+            cat "/opt/pbp/modules/$module/manifest.json" 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Module Info: $module" --textbox "$PBP_OUTPUT_FILE" 20 70
+            ;;
+        USB_DEVICES)
+            if command -v usbguard >/dev/null 2>&1; then
+                sudo usbguard list-devices 2>&1 | tee "$PBP_OUTPUT_FILE"
+            else
+                echo "usbguard command not found. Enable/install USB module first." | tee "$PBP_OUTPUT_FILE"
+            fi
+            whiptail --title "USB Devices" --textbox "$PBP_OUTPUT_FILE" 20 70
+            ;;
+        USB_RULES)
+            if [ -f /etc/usbguard/rules.conf ]; then
+                sudo cat /etc/usbguard/rules.conf 2>&1 | tee "$PBP_OUTPUT_FILE"
+            else
+                echo "No USB allowlist rules found at /etc/usbguard/rules.conf" | tee "$PBP_OUTPUT_FILE"
+            fi
+            whiptail --title "USB Allowlist Rules" --textbox "$PBP_OUTPUT_FILE" 20 70
+            ;;
+        USB_REFRESH)
+            if whiptail --title "Confirm" --yesno "Regenerate USB allowlist from currently connected devices?" 8 70; then
+                if command -v usbguard >/dev/null 2>&1; then
+                    sudo sh -c 'usbguard generate-policy > /etc/usbguard/rules.conf && chmod 600 /etc/usbguard/rules.conf && systemctl restart usbguard' 2>&1 | tee "$PBP_OUTPUT_FILE"
+                else
+                    echo "usbguard command not found. Enable/install USB module first." | tee "$PBP_OUTPUT_FILE"
+                fi
+                whiptail --title "USB Allowlist Refresh" --textbox "$PBP_OUTPUT_FILE" 20 70
+            fi
             ;;
     esac
 }
@@ -204,24 +281,33 @@ dns_control_menu() {
                     echo ""
                     echo "=== Unbound Status ==="
                     systemctl status unbound 2>&1 || echo "Not running"
-                } | tee /tmp/pbp-output.txt
-                whiptail --title "DNS Status" --textbox /tmp/pbp-output.txt 20 70
+                } | tee "$PBP_OUTPUT_FILE"
+                whiptail --title "DNS Status" --textbox "$PBP_OUTPUT_FILE" 20 70
                 ;;
             GUARD)
                 if whiptail --title "Confirm" --yesno "Start DNS sovereignty guard?" 8 40; then
-                    sudo systemctl start dns-sovereignty-guard 2>&1 | tee /tmp/pbp-output.txt
-                    whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+                    sudo systemctl start dns-sovereignty-guard 2>&1 | tee "$PBP_OUTPUT_FILE"
+                    whiptail --title "Result" --textbox "$PBP_OUTPUT_FILE" 20 70
                 fi
                 ;;
             STOP)
                 if whiptail --title "Confirm" --yesno "Stop DNS sovereignty guard?" 8 40; then
-                    sudo systemctl stop dns-sovereignty-guard 2>&1 | tee /tmp/pbp-output.txt
-                    whiptail --title "Result" --textbox /tmp/pbp-output.txt 20 70
+                    sudo systemctl stop dns-sovereignty-guard 2>&1 | tee "$PBP_OUTPUT_FILE"
+                    whiptail --title "Result" --textbox "$PBP_OUTPUT_FILE" 20 70
                 fi
                 ;;
             LOGS)
-                sudo tail -50 /var/log/pbp/dns-alerts.log 2>&1 | tee /tmp/pbp-output.txt
-                whiptail --title "DNS Alerts" --textbox /tmp/pbp-output.txt 20 70
+                if [[ -f /var/log/pbp/dns-alerts.log ]]; then
+                    sudo tail -50 /var/log/pbp/dns-alerts.log 2>&1 | tee "$PBP_OUTPUT_FILE"
+                else
+                    {
+                        echo "DNS alerts log not found: /var/log/pbp/dns-alerts.log"
+                        echo
+                        echo "If DNS sovereignty guard is installed, start it and try again:"
+                        echo "  sudo systemctl start dns-sovereignty-guard"
+                    } | tee "$PBP_OUTPUT_FILE"
+                fi
+                whiptail --title "DNS Alerts" --textbox "$PBP_OUTPUT_FILE" 20 70
                 ;;
         esac
     done
@@ -245,31 +331,31 @@ recon_audit_menu() {
     case "$choice" in
         SCAN)
             if whiptail --title "Confirm" --yesno "Run full security scan?" 8 40; then
-                sudo $PBP_BIN scan 2>&1 | tee /tmp/pbp-output.txt
-                whiptail --title "Scan Complete" --textbox /tmp/pbp-output.txt 20 70
+                sudo $PBP_BIN scan 2>&1 | tee "$PBP_OUTPUT_FILE"
+                whiptail --title "Scan Complete" --textbox "$PBP_OUTPUT_FILE" 20 70
             fi
             ;;
         BUGHUNT)
             if whiptail --title "Confirm" --yesno "Run bug hunt validator?" 8 40; then
-                sudo /opt/pbp/bughunt/bughunt.sh 2>&1 | tee /tmp/pbp-output.txt
-                whiptail --title "Bug Hunt Complete" --textbox /tmp/pbp-output.txt 20 70
+                sudo /opt/pbp/bughunt/bughunt.sh 2>&1 | tee "$PBP_OUTPUT_FILE"
+                whiptail --title "Bug Hunt Complete" --textbox "$PBP_OUTPUT_FILE" 20 70
             fi
             ;;
         INTEGRITY)
-            $PBP_BIN integrity 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Integrity Check" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN integrity 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Integrity Check" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
         ALERTS)
-            $PBP_BIN alerts 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Security Alerts" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN alerts 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Security Alerts" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
     esac
 }
 
 reports_menu() {
-    local choice=$(whiptail --title "Reports" \
+    local choice=$(whiptail --title "Captain's Ledger" \
         --backtitle "$BACKTITLE" \
-        --menu "Select action:" 20 60 10 \
+        --menu "Select ledger action:" 20 60 10 \
         "LIST" "List all reports" \
         "VIEW" "View latest report" \
         "GENERATE" "Generate new report" \
@@ -282,28 +368,28 @@ reports_menu() {
     
     case "$choice" in
         LIST)
-            $PBP_BIN reports 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Reports" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN reports 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Reports" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
         VIEW)
-            $PBP_BIN report 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Latest Report" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN report 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Latest Report" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
         GENERATE)
             if whiptail --title "Confirm" --yesno "Generate new report?" 8 40; then
-                sudo $PBP_BIN scan 2>&1 | tee /tmp/pbp-output.txt
-                whiptail --title "Report Generated" --textbox /tmp/pbp-output.txt 20 70
+                sudo $PBP_BIN scan 2>&1 | tee "$PBP_OUTPUT_FILE"
+                whiptail --title "Report Generated" --textbox "$PBP_OUTPUT_FILE" 20 70
             fi
             ;;
     esac
 }
 
 system_tools_menu() {
-    local choice=$(whiptail --title "System Tools" \
+    local choice=$(whiptail --title "Command Center Tools" \
         --backtitle "$BACKTITLE" \
-        --menu "Select tool:" 20 60 10 \
+        --menu "Select deck tool:" 20 60 10 \
         "DASHBOARD" "Launch TUI dashboard" \
-        "CONTROL" "Start web control plane" \
+        "CONTROL" "Launch Quarterdeck (web control plane)" \
         "HEALTH" "Run health checks" \
         "VERSION" "Show version" \
         "BACK" "Return to main menu" \
@@ -319,16 +405,16 @@ system_tools_menu() {
             "${PBP_ROOT:-/opt/pbp}/bin/pbp-dashboard"
             ;;
         CONTROL)
-            $PBP_BIN control start 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Control Plane" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN control start 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Control Plane" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
         HEALTH)
-            $PBP_BIN health 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Health Check" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN health 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Health Check" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
         VERSION)
-            $PBP_BIN version 2>&1 | tee /tmp/pbp-output.txt
-            whiptail --title "Version" --textbox /tmp/pbp-output.txt 20 70
+            $PBP_BIN version 2>&1 | tee "$PBP_OUTPUT_FILE"
+            whiptail --title "Version" --textbox "$PBP_OUTPUT_FILE" 20 70
             ;;
     esac
 }
@@ -337,13 +423,13 @@ main_menu() {
     while true; do
         local choice=$(whiptail --title "Main Menu" \
             --backtitle "$BACKTITLE" \
-            --menu "Select operation:" 20 60 10 \
-            "1" "Ship Status" \
-            "2" "Security Modules" \
-            "3" "DNS Control" \
-            "4" "Recon & Audit" \
-            "5" "Reports" \
-            "6" "System Tools" \
+            --menu "Choose your command deck action:" 20 60 10 \
+            "1" "Ship Status Ledger" \
+            "2" "War Room (Defense Modules)" \
+            "3" "DNS Helm Control" \
+            "4" "Crow's Nest Watch" \
+            "5" "Captain's Reports" \
+            "6" "Command Center Tools" \
             "7" "Exit" \
             3>&1 1>&2 2>&3)
         

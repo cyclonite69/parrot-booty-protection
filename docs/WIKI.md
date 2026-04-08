@@ -1,105 +1,74 @@
 # 🏴‍☠️ Parrot Booty Protection Wiki
 
-Welcome to the **Parrot Booty Protection** Wiki. This comprehensive guide details how to safeguard your digital treasure using our full-scale **Security Operations Console**.
+Welcome to the active field guide for PBP.
 
-## 🧭 Table of Contents
+## Mission
 
-1.  [Mission & Philosophy](#-mission--philosophy)
-2.  [The Command Center (Web Ops Console)](#-the-command-center-web-ops-console)
-3.  [The War Room (Modular Framework)](#-the-war-room-modular-framework)
-4.  [Getting Started](#-getting-started)
-5.  [Defense Modules](#-defense-modules)
-    *   [Rootkit Sentry](#rootkit-sentry)
-    *   [Network Exposure](#network-exposure)
-    *   [DNS Hardening](#dns-hardening)
-    *   [Encrypted Time (NTS)](#encrypted-time-nts)
-6.  [Maintenance & Monitoring](#-maintenance--monitoring)
-7.  [The Captain's Ledger (Reports)](#-the-captains-ledger-reports)
-8.  [Troubleshooting](#-troubleshooting)
+PBP enforces operator sovereignty:
+- No autonomous configuration changes
+- Explicit module lifecycle control
+- Auditable reporting and rollback
 
----
+## Command Center
 
-## 🏴‍☠️ Mission & Philosophy
+- **Quarterdeck (web control plane)**: `http://localhost:7777`
+- Start: `pbp control start`
+- Stop: `pbp control stop`
+- Integrity: `pbp integrity`
+- Alerts: `pbp alerts`
 
-The high seas of the internet are filled with privateers and scoundrels. **Parrot Booty Protection** is built on a **Zero-Trust Philosophy**:
+## War Room
 
-*   **Default Deny**: If it's not explicitly allowed, it's blocked.
-*   **Encrypted by Default**: All signals (DNS, Time) must be encrypted.
-*   **Minimal Surface Area**: Unused ports and services are scuttled.
-*   **Verifiable Security**: Continuous auditing and reporting.
+- **Menu**: `/opt/pbp/bin/pbp-menu`
+- **Dashboard**: `pbp dashboard`
+- **CLI**:
+  - `pbp list`
+  - `sudo pbp enable <module>`
+  - `sudo pbp disable <module>`
+  - `sudo pbp health [module]`
+  - `sudo pbp scan [module]`
 
----
+## Defense Modules
 
-## ⚔️ The Command Center (Web Ops Console)
+Current module set:
+- `time` - NTS time hardening
+- `dns` - Unbound encrypted DNS hardening
+- `network` - nftables firewall controls
+- `container` - Podman/rootless container checks
+- `audit` - auditd controls and validation
+- `rootkit` - rootkit scanner integration
+- `recon` - exposure and port recon
+- `usb` - USBGuard allowlist enforcement
+- `fail2ban` - brute-force protection
+- `mount` - filesystem/mount safety checks
+- `mac` - MAC randomization controls
+- `logs` - security log policy checks
 
-The primary interface for managing your ship's defenses is the **Web Ops Console**.
+## Captain's Ledger
 
-### The Quarterdeck: `http://localhost:8080`
-Accessible via any local browser, this dashboard provides:
-*   **Live Rigging Status**: Real-time SECURED/UNSECURED indicators.
-*   **Modular Control**: One-click Install and Execution of defenses.
-*   **The Ledger Browser**: Read all security reports directly in the high-contrast UI.
+- List reports: `pbp reports`
+- View latest/ID: `pbp report [id]`
+- Compare: `pbp compare <id1> <id2>`
+- Report output root: `/var/log/pbp/reports/`
 
----
+## Installation
 
-## ⚔️ The War Room (TUI)
-
-For those who prefer the terminal, the `hardenctl` dashboard remains available at `hardening-framework/hardenctl`.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-*   **OS**: Parrot OS or Debian.
-*   **Privileges**: Sudo/Root access for system changes.
-*   **Tools**: `python3`, `fastapi`, `uvicorn`, `whiptail`.
-
-### Installation
 ```bash
-git clone https://github.com/cyclonite69/dns-hardening-parrot.git
-cd dns-hardening-parrot
-sudo bash scripts/install_ops.sh
+git clone https://github.com/cyclonite69/parrot-booty-protection.git
+cd parrot-booty-protection
+sudo bash scripts/install.sh
+sudo bash scripts/install_control.sh
+sudo bash scripts/install_reporting_deps.sh
 ```
 
----
+For existing installs:
 
-## 🛡️ Defense Modules
+```bash
+sudo bash scripts/upgrade.sh
+```
 
-### Rootkit Sentry
-Uses `rkhunter` and `chkrootkit` to scan for hidden enemies in the hull.
-*   **Action**: `Run Scan`
-*   **Report**: `reports/rootkit/`
+## Troubleshooting
 
-### Network Exposure
-Uses `nmap` to perform external-style host validation and service fingerprinting.
-*   **Action**: `Batten Down`
-*   **Report**: HTML-based scan results.
-
-### DNS Hardening
-Configures `unbound` for DNS-over-TLS and DNSSEC.
-*   **Action**: `Inspect` to verify DoT signal.
-
----
-
-## 📜 The Captain's Ledger (Report Viewer)
-
-Every action on the ship is recorded. Use the **Open Ledger** button in the Web UI to view:
-*   Firewall ruleset exports.
-*   NTS synchronization status.
-*   Container security audits.
-*   System compliance summaries.
-
----
-
-## 🛠️ Troubleshooting
-
-| Issue | Potential Solution |
-| :--- | :--- |
-| **Console not loading** | Run `sudo systemctl restart pbp-ops`. |
-| **Module fails install** | Check `logs/` for the specific install log. |
-| **Network blocked** | Use `sudo nft flush ruleset` to open the ports. |
-
----
-
-*“May your booty be guarded and your lines be encrypted.”* 🦜🏴‍☠️
+- Menu missing modules: run `sudo pbp list` to verify registry/state access.
+- DNS scan errors about `resolve1`: upgrade runtime (`sudo bash scripts/upgrade.sh`).
+- Firewall shown inactive with external rules: ensure updated `modules/network/health.sh` is deployed via upgrade.
