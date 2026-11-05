@@ -1,0 +1,3 @@
+Name/IP address             Mode KeyID Type KLen Last Atmp  NAK Cook CLen
+=========================================================================
+time.cloudflare.com          NTS     0    0    0   -    0    0    0    0

@@ -1,0 +1,5 @@
+Name/IP address             Mode KeyID Type KLen Last Atmp  NAK Cook CLen
+=========================================================================
+time.cloudflare.com          NTS     2   30  128   6d    0    0    8   64
+nts.netnod.se                NTS     1   15  256  15d    0    0    8  100
+ptbtime1.ptb.de              NTS     1   15  256  15d    0    0    8  100

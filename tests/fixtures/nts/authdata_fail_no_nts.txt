@@ -1,0 +1,4 @@
+Name/IP address             Mode KeyID Type KLen Last Atmp  NAK Cook CLen
+=========================================================================
+pool.ntp.org                   -     0    0    0   -    0    0    0    0
+time.example.com               -     0    0    0   -    0    0    0    0

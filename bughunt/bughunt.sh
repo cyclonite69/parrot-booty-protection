@@ -3,8 +3,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PBP_ROOT="${PBP_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+PBP_ROOT="${PBP_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 source "${PBP_ROOT}/core/lib/logging.sh"
+source "${PBP_ROOT}/core/lib/dns_time_diagnostics.sh"
 
 REPORT_ID="bughunt_$(date +%Y%m%d_%H%M%S)"
 REPORT_DIR="/var/log/pbp/reports/${REPORT_ID}"
@@ -106,20 +107,38 @@ check_time_sync() {
     log_info "Verifying NTS time synchronization..."
     
     if ! command -v chronyc &>/dev/null; then
-        add_finding "time" "MEDIUM" "chrony not installed" "Run: sudo pbp enable time"
+        add_finding "time" "MEDIUM" "chrony not installed (UNAVAILABLE)" "Run: sudo pbp enable time"
         return
     fi
     
-    if ! systemctl is-active chronyd &>/dev/null; then
-        add_finding "time" "HIGH" "chronyd not running" "systemctl start chronyd"
+    if ! systemctl is-active chrony &>/dev/null && ! systemctl is-active chronyd &>/dev/null; then
+        add_finding "time" "HIGH" "chronyd not running" "systemctl start chrony"
         return
     fi
     
-    # Check NTS authentication
-    local nts_count=$(chronyc -n authdata 2>/dev/null | grep -c "NTS" || true)
-    if [[ "${nts_count:-0}" -eq 0 ]]; then
-        add_finding "time" "MEDIUM" "No NTS-authenticated time sources" "Configure NTS servers in chrony.conf"
-    fi
+    # Classify NTS from authdata; 501 Not authorised => UNVERIFIED (not FAIL)
+    local authdata_out
+    authdata_out="$(chronyc -n authdata 2>&1 || true)"
+    local nts_state
+    nts_state="$(assess_nts_authdata "$authdata_out")"
+    case "$nts_state" in
+        PASS) ;;
+        UNVERIFIED)
+            add_finding "time" "INFO" "NTS authentication UNVERIFIED (chronyc 501 Not authorised)" "Re-check with: sudo chronyc -N authdata"
+            ;;
+        WARNING)
+            add_finding "time" "MEDIUM" "NTS configured but not fully established" "Verify NTS-KE connectivity and source health"
+            ;;
+        FAIL)
+            add_finding "time" "HIGH" "NTS authentication not active (FAIL)" "Configure NTS servers in chrony.conf"
+            ;;
+        UNAVAILABLE)
+            add_finding "time" "MEDIUM" "NTS authentication data UNAVAILABLE" "Ensure chronyd is running"
+            ;;
+        *)
+            add_finding "time" "MEDIUM" "NTS authentication assessment ERROR" "Inspect chronyc -N authdata manually"
+            ;;
+    esac
     
     # Check synchronization
     if ! chronyc tracking 2>/dev/null | grep -q "Leap status.*Normal"; then
@@ -132,24 +151,40 @@ check_dns() {
     log_info "Validating DNS hardening..."
     
     if systemctl is-active unbound &>/dev/null || pgrep -x unbound &>/dev/null; then
-        # Check DoT upstream
-        if ! grep -Rqs "forward-tls-upstream:[[:space:]]*yes" /etc/unbound /etc/unbound/unbound.conf* 2>/dev/null; then
-            add_finding "dns" "HIGH" "DNS over TLS not enabled" "Set forward-tls-upstream: yes in unbound forward-zone"
+        local conf_text
+        conf_text="$(unbound_read_config_tree /etc/unbound/unbound.conf 2>/dev/null || true)"
+
+        # Configuration checks (not runtime proof)
+        if ! unbound_root_forward_zone_has_setting "$conf_text" "forward-tls-upstream" "yes"; then
+            add_finding "dns" "HIGH" "DNS over TLS not configured (configuration check)" "Set forward-tls-upstream: yes in unbound forward-zone"
         fi
         
-        # Check DNSSEC
-        if ! grep -RqsE "auto-trust-anchor-file|harden-dnssec-stripped:[[:space:]]*yes" /etc/unbound /etc/unbound/unbound.conf* 2>/dev/null; then
-            add_finding "dns" "MEDIUM" "DNSSEC not enabled" "Enable DNSSEC validation in unbound configuration"
+        if ! unbound_has_dnssec_validation "$conf_text"; then
+            add_finding "dns" "MEDIUM" "DNSSEC not configured (configuration check)" "Enable DNSSEC validation in unbound configuration"
+        fi
+
+        if ! unbound_has_fail_closed_forwarding "$conf_text"; then
+            add_finding "dns" "HIGH" "Fail-closed forwarding missing (configuration check)" "Set forward-first: no"
         fi
         
-        # Check resolv.conf pinned to 127.0.0.1
         if ! grep -qE "^[[:space:]]*nameserver[[:space:]]+127\\.0\\.0\\.1([[:space:]]|$)" /etc/resolv.conf 2>/dev/null; then
-            add_finding "dns" "MEDIUM" "System resolver not pinned to localhost" "Point /etc/resolv.conf to 127.0.0.1"
+            add_finding "dns" "MEDIUM" "System resolver not pinned to localhost (configuration check)" "Point /etc/resolv.conf to 127.0.0.1"
         fi
         
-        # Test resolution
-        if ! dig +short @127.0.0.1 cloudflare.com &>/dev/null && ! getent ahosts cloudflare.com &>/dev/null; then
-            add_finding "dns" "CRITICAL" "DNS resolution failing" "Check unbound service status and upstream connectivity"
+        # Runtime verification — labelled separately; not inferred from config text
+        if command -v dig &>/dev/null; then
+            local valid_out bogus_out
+            valid_out="$(dig +dnssec +time=2 +tries=1 cloudflare.com @127.0.0.1 2>/dev/null || true)"
+            if ! printf '%s\n' "$valid_out" | grep -Eq 'status:[[:space:]]*NOERROR' \
+                || ! printf '%s\n' "$valid_out" | grep -Eq 'flags:.*\bad\b'; then
+                add_finding "dns" "HIGH" "DNSSEC-validated resolution failed (runtime)" "Check unbound DNSSEC and upstream DoT"
+            fi
+            bogus_out="$(dig +dnssec +time=2 +tries=1 dnssec-failed.org @127.0.0.1 2>/dev/null || true)"
+            if ! printf '%s\n' "$bogus_out" | grep -Eq 'SERVFAIL'; then
+                add_finding "dns" "HIGH" "Bogus DNSSEC domain not rejected (runtime)" "Ensure DNSSEC validation is enforcing"
+            fi
+        elif ! dig +short @127.0.0.1 cloudflare.com &>/dev/null && ! getent ahosts cloudflare.com &>/dev/null; then
+            add_finding "dns" "CRITICAL" "DNS resolution failing (runtime; DNSSEC unverified)" "Check unbound service status and upstream connectivity"
         fi
     elif systemctl is-active systemd-resolved &>/dev/null || pgrep -x systemd-resolved &>/dev/null; then
         if [[ ! -f /etc/systemd/resolved.conf ]]; then
@@ -158,15 +193,15 @@ check_dns() {
         fi
         
         if ! grep -q "DNSOverTLS=yes" /etc/systemd/resolved.conf; then
-            add_finding "dns" "HIGH" "DNS over TLS not enabled" "Enable DoT in resolved.conf"
+            add_finding "dns" "HIGH" "DNS over TLS not configured (configuration check)" "Enable DoT in resolved.conf"
         fi
         
         if ! grep -q "DNSSEC=yes" /etc/systemd/resolved.conf; then
-            add_finding "dns" "MEDIUM" "DNSSEC not enabled" "Enable DNSSEC in resolved.conf"
+            add_finding "dns" "MEDIUM" "DNSSEC not configured (configuration check)" "Enable DNSSEC in resolved.conf"
         fi
         
         if ! resolvectl query cloudflare.com &>/dev/null; then
-            add_finding "dns" "CRITICAL" "DNS resolution failing" "Check systemd-resolved status"
+            add_finding "dns" "CRITICAL" "DNS resolution failing (runtime)" "Check systemd-resolved status"
         fi
     else
         add_finding "dns" "CRITICAL" "No supported DNS resolver active" "Start and configure unbound or systemd-resolved"

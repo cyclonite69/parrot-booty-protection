@@ -1,0 +1,3 @@
+Name/IP address             Mode KeyID Type KLen Last Atmp  NAK Cook CLen
+=========================================================================
+501 Not authorised
