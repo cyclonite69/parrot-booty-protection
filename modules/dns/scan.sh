@@ -62,6 +62,31 @@ if is_active_service unbound; then
         }]')
     fi
 
+    # Check NetworkManager active DNS policy
+    if command -v NetworkManager &>/dev/null; then
+        nm_effective_dns=$(NetworkManager --print-config 2>/dev/null | grep -E '^[[:space:]]*dns=' | awk -F= '{print $2}' | tr -d ' ' || true)
+        if [[ -n "$nm_effective_dns" && "$nm_effective_dns" != "none" ]]; then
+            findings=$(echo "$findings" | jq --arg dns_mode "$nm_effective_dns" '. += [{
+                "id": "DNS-005",
+                "severity": "HIGH",
+                "title": "NetworkManager DNS management active",
+                "description": ("NetworkManager effective dns is \"" + $dns_mode + "\" instead of \"none\", which risks overwriting the sovereign resolver."),
+                "remediation": "Configure dns=none in /etc/NetworkManager/conf.d/ and disable overriding conf files"
+            }]')
+        fi
+    fi
+
+    # Check if /etc/resolv.conf is protected with immutable flag
+    if command -v lsattr &>/dev/null && ! lsattr /etc/resolv.conf 2>/dev/null | grep -q "i"; then
+        findings=$(echo "$findings" | jq '. += [{
+            "id": "DNS-006",
+            "severity": "MEDIUM",
+            "title": "Resolv.conf is not locked as immutable",
+            "description": "File /etc/resolv.conf lacks the immutable bit (+i) and can be overwritten by network daemons",
+            "remediation": "Lock /etc/resolv.conf with sudo chattr +i /etc/resolv.conf"
+        }]')
+    fi
+
     # Test DNS resolution in unbound mode.
     if ! dns_resolution_ok "cloudflare.com"; then
         findings=$(echo "$findings" | jq '. += [{

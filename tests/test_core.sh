@@ -10,6 +10,8 @@ export PBP_ROOT
 export PBP_STATE_DIR="/tmp/pbp-test/state"
 export PBP_LOG_DIR="/tmp/pbp-test/log"
 export PBP_BACKUP_DIR="/tmp/pbp-test/backups"
+export PBP_REPORT_DIR="/tmp/pbp-test/log/reports"
+export PBP_MODULES_DIR="${PBP_ROOT}/modules"
 
 # Setup test environment
 setup_test_env() {
@@ -31,7 +33,7 @@ test_assert() {
     local description="$1"
     local command="$2"
     
-    ((TESTS_RUN++))
+    ((++TESTS_RUN))
     
     set +e
     eval "$command" &>/dev/null
@@ -40,11 +42,11 @@ test_assert() {
     
     if [[ $result -eq 0 ]]; then
         echo "✓ ${description}"
-        ((TESTS_PASSED++))
+        ((++TESTS_PASSED))
         return 0
     else
         echo "✗ ${description}"
-        ((TESTS_FAILED++))
+        ((++TESTS_FAILED))
         return 0  # Don't exit on test failure
     fi
 }
@@ -102,7 +104,7 @@ test_registry() {
     
     source "${PBP_ROOT}/core/registry.sh"
     
-    test_assert "List available modules" "list_available_modules | grep -q ."
+    test_assert "List available modules" "[[ -n \$(list_available_modules) ]]"
     test_assert "Validate manifest" "validate_manifest ${PBP_ROOT}/modules/_template/manifest.json"
     test_assert "Get module manifest" "get_module_manifest _template | jq -e .name"
     

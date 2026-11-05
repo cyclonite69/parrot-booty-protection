@@ -8,8 +8,8 @@ source "${PBP_ROOT}/core/lib/report.sh"
 findings='[]'
 
 # Check NTS authentication status
-nts_status=$(chronyc -n authdata 2>/dev/null | grep -c "NTS" || echo "0")
-if [[ "$nts_status" -eq 0 ]]; then
+nts_status=$(chronyc -n authdata 2>/dev/null | grep -c "NTS" || true)
+if [[ "${nts_status:-0}" -eq 0 ]]; then
     findings=$(echo "$findings" | jq '. += [{
         "id": "TIME-001",
         "severity": "HIGH",

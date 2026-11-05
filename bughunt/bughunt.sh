@@ -116,8 +116,8 @@ check_time_sync() {
     fi
     
     # Check NTS authentication
-    local nts_count=$(chronyc -n authdata 2>/dev/null | grep -c "NTS" || echo "0")
-    if [[ "$nts_count" -eq 0 ]]; then
+    local nts_count=$(chronyc -n authdata 2>/dev/null | grep -c "NTS" || true)
+    if [[ "${nts_count:-0}" -eq 0 ]]; then
         add_finding "time" "MEDIUM" "No NTS-authenticated time sources" "Configure NTS servers in chrony.conf"
     fi
     
@@ -131,24 +131,45 @@ check_time_sync() {
 check_dns() {
     log_info "Validating DNS hardening..."
     
-    if [[ ! -f /etc/systemd/resolved.conf ]]; then
-        add_finding "dns" "MEDIUM" "systemd-resolved not configured" "Run: sudo pbp enable dns"
-        return
-    fi
-    
-    # Check DoT
-    if ! grep -q "DNSOverTLS=yes" /etc/systemd/resolved.conf; then
-        add_finding "dns" "HIGH" "DNS over TLS not enabled" "Enable DoT in resolved.conf"
-    fi
-    
-    # Check DNSSEC
-    if ! grep -q "DNSSEC=yes" /etc/systemd/resolved.conf; then
-        add_finding "dns" "MEDIUM" "DNSSEC not enabled" "Enable DNSSEC in resolved.conf"
-    fi
-    
-    # Test resolution
-    if ! resolvectl query cloudflare.com &>/dev/null; then
-        add_finding "dns" "CRITICAL" "DNS resolution failing" "Check systemd-resolved status"
+    if systemctl is-active unbound &>/dev/null || pgrep -x unbound &>/dev/null; then
+        # Check DoT upstream
+        if ! grep -Rqs "forward-tls-upstream:[[:space:]]*yes" /etc/unbound /etc/unbound/unbound.conf* 2>/dev/null; then
+            add_finding "dns" "HIGH" "DNS over TLS not enabled" "Set forward-tls-upstream: yes in unbound forward-zone"
+        fi
+        
+        # Check DNSSEC
+        if ! grep -RqsE "auto-trust-anchor-file|harden-dnssec-stripped:[[:space:]]*yes" /etc/unbound /etc/unbound/unbound.conf* 2>/dev/null; then
+            add_finding "dns" "MEDIUM" "DNSSEC not enabled" "Enable DNSSEC validation in unbound configuration"
+        fi
+        
+        # Check resolv.conf pinned to 127.0.0.1
+        if ! grep -qE "^[[:space:]]*nameserver[[:space:]]+127\\.0\\.0\\.1([[:space:]]|$)" /etc/resolv.conf 2>/dev/null; then
+            add_finding "dns" "MEDIUM" "System resolver not pinned to localhost" "Point /etc/resolv.conf to 127.0.0.1"
+        fi
+        
+        # Test resolution
+        if ! dig +short @127.0.0.1 cloudflare.com &>/dev/null && ! getent ahosts cloudflare.com &>/dev/null; then
+            add_finding "dns" "CRITICAL" "DNS resolution failing" "Check unbound service status and upstream connectivity"
+        fi
+    elif systemctl is-active systemd-resolved &>/dev/null || pgrep -x systemd-resolved &>/dev/null; then
+        if [[ ! -f /etc/systemd/resolved.conf ]]; then
+            add_finding "dns" "MEDIUM" "systemd-resolved not configured" "Run: sudo pbp enable dns"
+            return
+        fi
+        
+        if ! grep -q "DNSOverTLS=yes" /etc/systemd/resolved.conf; then
+            add_finding "dns" "HIGH" "DNS over TLS not enabled" "Enable DoT in resolved.conf"
+        fi
+        
+        if ! grep -q "DNSSEC=yes" /etc/systemd/resolved.conf; then
+            add_finding "dns" "MEDIUM" "DNSSEC not enabled" "Enable DNSSEC in resolved.conf"
+        fi
+        
+        if ! resolvectl query cloudflare.com &>/dev/null; then
+            add_finding "dns" "CRITICAL" "DNS resolution failing" "Check systemd-resolved status"
+        fi
+    else
+        add_finding "dns" "CRITICAL" "No supported DNS resolver active" "Start and configure unbound or systemd-resolved"
     fi
 }
 
